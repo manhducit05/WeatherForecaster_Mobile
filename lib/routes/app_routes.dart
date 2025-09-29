@@ -8,7 +8,7 @@ class AppRoutes {
     switch (settings.name) {
       case home:
         return MaterialPageRoute(
-          builder: (_) => const WeatherPage(), // không cần args nữa
+          builder: (_) => const WeatherPage(),
         );
       default:
         return _errorRoute("No route defined for ${settings.name}");

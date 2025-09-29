@@ -19,9 +19,24 @@ class _WeatherPageState extends State<WeatherPage> {
   bool _loading = true;
   String? _error;
 
+  // ✅ Các biến latitude, longitude, timezone có thể thay đổi
+  double latitude = 21.0285;
+  double longitude = 105.8542;
+  String timezone = 'Asia/Bangkok';
+
   @override
   void initState() {
     super.initState();
+    fetchWeather();
+  }
+
+  // ✅ Hàm cho phép đổi vị trí
+  void updateLocation(double lat, double lon, String tz) {
+    setState(() {
+      latitude = lat;
+      longitude = lon;
+      timezone = tz;
+    });
     fetchWeather();
   }
 
@@ -32,12 +47,12 @@ class _WeatherPageState extends State<WeatherPage> {
     });
 
     try {
-      // Query lấy hourly (temp, wind, precipitation, weathercode) + daily 7 ngày
       final uri = Uri.parse(
-          'https://api.open-meteo.com/v1/forecast?latitude=21.0285&longitude'
-              '=105.8542&hourly=temperature_2m,precipitation,weathercode'
-              ',windspeed_10m&daily=temperature_2m_max,temperature_2m_min'
-              ',weathercode&timezone=Asia/Bangkok'
+        'https://api.open-meteo.com/v1/forecast'
+            '?latitude=$latitude&longitude=$longitude'
+            '&hourly=temperature_2m,precipitation,weathercode,windspeed_10m'
+            '&daily=temperature_2m_max,temperature_2m_min,weathercode'
+            '&timezone=$timezone',
       );
 
       final res = await http.get(uri);
@@ -76,24 +91,21 @@ class _WeatherPageState extends State<WeatherPage> {
       95, 96, 99
     ].contains(code);
   }
+
   int? _extractTodayWeatherCode(Map<String, dynamic> data) {
     try {
-      // Thử lấy daily.weathercode[0]
       final daily = data['daily'] as Map<String, dynamic>?;
-      final List<dynamic>? dailyCodes = daily != null ? (daily['weathercode'] as List<dynamic>?) : null;
+      final List<dynamic>? dailyCodes = daily?['weathercode'];
       if (dailyCodes != null && dailyCodes.isNotEmpty) {
         return (dailyCodes[0] as num).toInt();
       }
 
-      // Fallback → hourly.weathercode[0]
       final hourly = data['hourly'] as Map<String, dynamic>?;
-      final List<dynamic>? hourlyCodes = hourly != null ? (hourly['weathercode'] as List<dynamic>?) : null;
+      final List<dynamic>? hourlyCodes = hourly?['weathercode'];
       if (hourlyCodes != null && hourlyCodes.isNotEmpty) {
         return (hourlyCodes[0] as num).toInt();
       }
-    } catch (_) {
-      // ignore and return null
-    }
+    } catch (_) {}
     return null;
   }
 
@@ -133,14 +145,18 @@ class _WeatherPageState extends State<WeatherPage> {
       );
     }
 
-    // Lấy mã weathercode hôm nay (ưu tiên daily, fallback hourly)
     final int? todayCode = _extractTodayWeatherCode(weatherData!);
 
-    // Quyết định hiển thị RainPage hay HomePage (cloud)
     if (isRainy(todayCode)) {
-      return RainPage(weatherData: weatherData!);
+      return RainPage(
+        weatherData: weatherData!,
+        onLocationChange: updateLocation,
+      );
     } else {
-      return HomePage(weatherData: weatherData!);
+      return HomePage(
+        weatherData: weatherData!,
+        onLocationChange: updateLocation,
+      );
     }
   }
 }

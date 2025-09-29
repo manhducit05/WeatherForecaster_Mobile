@@ -3,11 +3,44 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 
-class RainPage extends StatelessWidget {
+class RainPage extends StatefulWidget {
   final Map<String, dynamic> weatherData;
+  final Function(double lat, double lon, String tz) onLocationChange;
 
-  const RainPage({super.key, required this.weatherData});
+  const RainPage({
+    super.key,
+    required this.weatherData,
+    required this.onLocationChange,
+  });
 
+  @override
+  State<RainPage> createState() => _RainPageState();
+}
+class _RainPageState extends State<RainPage> {
+// Danh sách location mẫu (bạn có thể thay bằng dữ liệu thật)
+  final List<Map<String, dynamic>> _locations = [
+    {'name': 'Bangkok', 'lat': 13.7563, 'lon': 100.5018, 'tz': 'Asia/Bangkok'},
+    {'name': 'New York', 'lat': 40.7128, 'lon': -74.0060, 'tz': 'America/New_York'},
+    {'name': 'London', 'lat': 51.5074, 'lon': -0.1278, 'tz': 'Europe/London'},
+    {'name': 'Tokyo', 'lat': 35.6895, 'lon': 139.6917, 'tz': 'Asia/Tokyo'},
+    {'name': 'Sydney', 'lat': -33.8688, 'lon': 151.2093, 'tz': 'Australia/Sydney'},
+    {'name': 'Paris', 'lat': 48.8566, 'lon': 2.3522, 'tz': 'Europe/Paris'},
+    {'name': 'Los Angeles', 'lat': 34.0522, 'lon': -118.2437, 'tz': 'America/Los_Angeles'},
+
+  ];
+  @override
+  void initState() {
+    super.initState();
+
+    final currentTz = widget.weatherData['timezone'] ?? 'Asia/Bangkok';
+
+    _selectedLocation = _locations.firstWhere(
+          (loc) => loc['tz'] == currentTz,
+      orElse: () => _locations.first,
+    );
+  }
+// Biến giữ location đang chọn
+  Map<String, dynamic>? _selectedLocation;
   String _mapWeatherText(int code) {
     if (code == 0) return "Clear sky";
     if ([1, 2].contains(code)) return "Partly cloudy";
@@ -55,8 +88,8 @@ class RainPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // safety checks
-    final daily = (weatherData['daily'] ?? {}) as Map<String, dynamic>;
-    final hourly = (weatherData['hourly'] ?? {}) as Map<String, dynamic>;
+    final daily = (widget.weatherData['daily'] ?? {}) as Map<String, dynamic>;
+    final hourly = (widget.weatherData['hourly'] ?? {}) as Map<String, dynamic>;
 
     final dailyTimes = List<String>.from(daily['time'] ?? []);
     final dailyMax = List<dynamic>.from(daily['temperature_2m_max'] ?? []);
@@ -182,22 +215,44 @@ class RainPage extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      children: const [
-                        Icon(Icons.location_on, color: Colors.white),
-                        SizedBox(width: 4),
-                        Text(
-                          "Asia/BangKok",
-                          style: TextStyle(
+                Row(
+                children: [
+                const Icon(Icons.location_on, color: Colors.white),
+                const SizedBox(width: 4),
+                DropdownButtonHideUnderline(
+                  child: DropdownButton<Map<String, dynamic>>(
+                    dropdownColor: Colors.black87,
+                    value: _selectedLocation,
+                    icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white),
+                    items: _locations.map((loc) {
+                      return DropdownMenuItem<Map<String, dynamic>>(
+                        value: loc,
+                        child: Text(
+                          loc['name'],
+                          style: const TextStyle(
                             fontFamily: 'Inter',
-                            fontSize: 20,
+                            fontSize: 18,
                             color: Colors.white,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
-                        Icon(Icons.keyboard_arrow_down, color: Colors.white),
-                      ],
-                    ),
+                      );
+                    }).toList(),
+                    onChanged: (val) {
+                      if (val == null) return;
+                      setState(() {
+                        _selectedLocation = val;
+                      });
+                      widget.onLocationChange(
+                        val['lat'],
+                        val['lon'],
+                        val['tz'],
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
                     const CircleAvatar(
                       radius: 18,
                       backgroundImage: AssetImage("assets/images/avatar.png"),
@@ -289,9 +344,8 @@ class RainPage extends StatelessWidget {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
                       HourlyChart(items: hourlyPoints),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 20),
 
                       Center(
                         child: ElevatedButton(
@@ -409,7 +463,7 @@ class HourlyChart extends StatelessWidget {
 
     final spots = List.generate(
       items.length,
-      (i) => FlSpot(i.toDouble(), (items[i]['temp'] as double)),
+          (i) => FlSpot(i.toDouble(), (items[i]['temp'] as double)),
     );
     final temps = items.map((e) => e['temp'] as double).toList();
     final minY = (temps.reduce((a, b) => a < b ? a : b) - 3).clamp(
@@ -422,7 +476,7 @@ class HourlyChart extends StatelessWidget {
     );
 
     return SizedBox(
-      height: 230,
+      height: 220,
       child: LayoutBuilder(
         builder: (context, constraints) {
           final chartWidth = constraints.maxWidth;
@@ -531,3 +585,4 @@ class HourlyChart extends StatelessWidget {
     );
   }
 }
+

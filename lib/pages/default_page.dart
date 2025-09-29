@@ -3,9 +3,43 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   final Map<String, dynamic> weatherData;
-  const HomePage({super.key, required this.weatherData});
+  final Function(double lat, double lon, String tz) onLocationChange;
+
+  const HomePage({
+    super.key,
+    required this.weatherData,
+    required this.onLocationChange,
+  });
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+class _HomePageState extends State<HomePage> {
+// Danh sách location mẫu (bạn có thể thay bằng dữ liệu thật)
+  final List<Map<String, dynamic>> _locations = [
+    {'name': 'Bangkok', 'lat': 13.7563, 'lon': 100.5018, 'tz': 'Asia/Bangkok'},
+    {'name': 'New York', 'lat': 40.7128, 'lon': -74.0060, 'tz': 'America/New_York'},
+    {'name': 'London', 'lat': 51.5074, 'lon': -0.1278, 'tz': 'Europe/London'},
+    {'name': 'Tokyo', 'lat': 35.6895, 'lon': 139.6917, 'tz': 'Asia/Tokyo'},
+    {'name': 'Sydney', 'lat': -33.8688, 'lon': 151.2093, 'tz': 'Australia/Sydney'},
+    {'name': 'Paris', 'lat': 48.8566, 'lon': 2.3522, 'tz': 'Europe/Paris'},
+    {'name': 'Los Angeles', 'lat': 34.0522, 'lon': -118.2437, 'tz': 'America/Los_Angeles'},
+
+  ];
+  @override
+  void initState() {
+    super.initState();
+
+    final currentTz = widget.weatherData['timezone'] ?? 'Asia/Bangkok';
+
+    _selectedLocation = _locations.firstWhere(
+          (loc) => loc['tz'] == currentTz,
+      orElse: () => _locations.first,
+    );
+  }
+  Map<String, dynamic>? _selectedLocation;
 
   String _mapWeatherText(int code) {
     if (code == 0) return "Clear sky";
@@ -58,8 +92,8 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // safety checks
-    final daily = (weatherData['daily'] ?? {}) as Map<String, dynamic>;
-    final hourly = (weatherData['hourly'] ?? {}) as Map<String, dynamic>;
+    final daily = (widget.weatherData['daily'] ?? {}) as Map<String, dynamic>;
+    final hourly = (widget.weatherData['hourly'] ?? {}) as Map<String, dynamic>;
 
     // chuẩn hóa thành 4 danh sách theo ngày
     final dailyTimes = List<String>.from(daily['time'] ?? []);
@@ -186,22 +220,44 @@ class HomePage extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    children: const [
-                      Icon(Icons.location_on, color: Colors.white),
-                      SizedBox(width: 4),
-                      Text(
-                        "Asia/BangKok",
-                        style: TextStyle(
+              Row(
+              children: [
+              const Icon(Icons.location_on, color: Colors.white),
+              const SizedBox(width: 4),
+              DropdownButtonHideUnderline(
+                child: DropdownButton<Map<String, dynamic>>(
+                  dropdownColor: Colors.black87,
+                  value: _selectedLocation,
+                  icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white),
+                  items: _locations.map((loc) {
+                    return DropdownMenuItem<Map<String, dynamic>>(
+                      value: loc,
+                      child: Text(
+                        loc['name'],
+                        style: const TextStyle(
                           fontFamily: 'Inter',
-                          fontSize: 20,
+                          fontSize: 18,
                           color: Colors.white,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      Icon(Icons.keyboard_arrow_down, color: Colors.white),
-                    ],
-                  ),
+                    );
+                  }).toList(),
+                  onChanged: (val) {
+                    if (val == null) return;
+                    setState(() {
+                      _selectedLocation = val;
+                    });
+                    widget.onLocationChange(
+                      val['lat'],
+                      val['lon'],
+                      val['tz'],
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
                   const CircleAvatar(
                     radius: 18,
                     backgroundImage: AssetImage("assets/images/avatar.png"),
@@ -301,12 +357,11 @@ class HomePage extends StatelessWidget {
                       ],
                     ),
 
-                    const SizedBox(height: 8),
 
                     // --- Chart using hourlyPoints ---
                     HourlyChart(items: hourlyPoints),
 
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 20),
 
                     // --- Button ---
                     Center(
@@ -421,7 +476,7 @@ class HourlyChart extends StatelessWidget {
     // Build spots for chart (x = index)
     final spots = List.generate(
       items.length,
-      (i) => FlSpot(i.toDouble(), (items[i]['temp'] as double)),
+          (i) => FlSpot(i.toDouble(), (items[i]['temp'] as double)),
     );
     final temps = items.map((e) => e['temp'] as double).toList();
     final minY = (temps.reduce((a, b) => a < b ? a : b) - 3).clamp(
@@ -434,7 +489,7 @@ class HourlyChart extends StatelessWidget {
     );
 
     return SizedBox(
-      height: 230,
+      height: 220,
       child: LayoutBuilder(
         builder: (context, constraints) {
           final chartWidth = constraints.maxWidth;
