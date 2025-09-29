@@ -53,7 +53,7 @@ class _RainPageState extends State<RainPage> {
   }
 
   String _bigIconForCode(int code) {
-    if (code == 0) return "assets/images/sunny.svg";
+    if (code == 0) return "assets/images/sun.svg";
     if ([1, 2].contains(code)) return "assets/images/partly_cloudy.svg";
     if (code == 3) return "assets/images/cloud.svg";
     if ([51, 53, 55, 61, 63, 65, 80, 81, 82].contains(code))
@@ -63,13 +63,13 @@ class _RainPageState extends State<RainPage> {
   }
 
   String _smallIconForCode(int code) {
-    if (code == 0) return "assets/icons/sunny.svg";
-    if ([1, 2].contains(code)) return "assets/icons/partly_cloudy.svg";
-    if (code == 3) return "assets/icons/cloud.svg";
+    if (code == 0) return "assets/images/sun.svg";
+    if ([1, 2].contains(code)) return "assets/images/partly_cloudy.svg";
+    if (code == 3) return "assets/images/cloud.svg";
     if ([51, 53, 55, 61, 63, 65, 80, 81, 82].contains(code))
-      return "assets/icons/rainy.svg";
-    if ([95, 96, 99].contains(code)) return "assets/icons/thunderstorm.svg";
-    return "assets/icons/cloud.svg";
+      return "assets/images/rainy.svg";
+    if ([95, 96, 99].contains(code)) return "assets/images/thunderstorm.svg";
+    return "assets/images/cloud.svg";
   }
 
   String _weekdayShort(DateTime d) {
@@ -345,7 +345,7 @@ class _RainPageState extends State<RainPage> {
                         ],
                       ),
                       HourlyChart(items: hourlyPoints),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 10),
 
                       Center(
                         child: ElevatedButton(
@@ -442,6 +442,7 @@ class _DayWeather extends StatelessWidget {
   }
 }
 
+
 class HourlyChart extends StatelessWidget {
   final List<Map<String, dynamic>> items;
 
@@ -465,30 +466,24 @@ class HourlyChart extends StatelessWidget {
       items.length,
           (i) => FlSpot(i.toDouble(), (items[i]['temp'] as double)),
     );
+
     final temps = items.map((e) => e['temp'] as double).toList();
-    final minY = (temps.reduce((a, b) => a < b ? a : b) - 3).clamp(
-      -50.0,
-      100.0,
-    );
-    final maxY = (temps.reduce((a, b) => a > b ? a : b) + 3).clamp(
-      -50.0,
-      100.0,
-    );
+    final minY = (temps.reduce((a, b) => a < b ? a : b) - 3).clamp(-50.0, 100.0);
+    final maxY = (temps.reduce((a, b) => a > b ? a : b) + 3).clamp(-50.0, 100.0);
 
     return SizedBox(
       height: 220,
       child: LayoutBuilder(
         builder: (context, constraints) {
           final chartWidth = constraints.maxWidth;
-          const sidePadding = 24.0;
+          const sidePadding = 40.0;
           final innerWidth = chartWidth - sidePadding * 2;
-          final spacing = (items.length > 1)
-              ? innerWidth / (items.length - 1)
-              : 0.0;
-          final chartHeight = 120.0;
+          final spacing = (items.length > 1) ? innerWidth / (items.length - 1) : 0.0;
+          final chartHeight = 120.0; // cao của line chart
 
           return Stack(
             children: [
+              // Line chart
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: sidePadding),
                 child: LineChart(
@@ -512,70 +507,81 @@ class HourlyChart extends StatelessWidget {
                   ),
                 ),
               ),
+              // Các nhãn và icon
               ...List.generate(items.length, (index) {
                 final item = items[index];
-                final temp = (item['temp'] as double);
-                final wind =
-                    (item['wind'] as double).toStringAsFixed(1) + "km/h";
+                final temp = item['temp'] as double;
                 final hour = item['hour'] as String;
+                final wind = (item['wind'] as double).toStringAsFixed(1) + "km/h";
                 final code = item['code'] as int;
-
                 final posX = sidePadding + index * spacing;
-                final relative = (temp - minY) / (maxY - minY);
-                final posY = (1 - relative) * chartHeight + 60;
 
+                // Icon chọn theo code
                 final smallIcon = (code == 0)
-                    ? "assets/icons/sunny.svg"
+                    ? "assets/images/sunny.svg"
                     : ([1, 2].contains(code))
-                    ? "assets/icons/partly_cloudy.svg"
+                    ? "assets/images/partly_cloudy.svg"
                     : (code == 3)
-                    ? "assets/icons/cloud.svg"
+                    ? "assets/images/cloud.svg"
                     : ([51, 53, 55, 61, 63, 65, 80, 81, 82].contains(code))
-                    ? "assets/icons/rainy.svg"
+                    ? "assets/images/rainy.svg"
                     : ([95, 96, 99].contains(code))
-                    ? "assets/icons/thunderstorm.svg"
-                    : "assets/icons/cloud.svg";
+                    ? "assets/images/thunderstorm.svg"
+                    : "assets/images/cloud.svg";
 
-                return Positioned(
-                  left: posX - 20,
-                  top: posY,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
+                // Tính vị trí Y của điểm trên line chart
+                final relative = (temp - minY) / (maxY - minY);
+                final posY = (1 - relative) * chartHeight + 30; // 20 để tránh sát top
+                final infoTop = chartHeight + 30; // phần icon + gió + giờ bên dưới chart
+
+                return Stack(
+                  children: [
+                    // Nhiệt độ phía trên line chart
+                    Positioned(
+                      left: posX - 15,
+                      top: posY - 28,
+                      child: Text(
                         "${temp.toInt()}°",
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      const SizedBox(height: 6),
-                      SvgPicture.asset(
-                        smallIcon,
-                        width: 30,
-                        height: 30,
-                        colorFilter: const ColorFilter.mode(
-                          Colors.white,
-                          BlendMode.srcIn,
-                        ),
+                    ),
+                    // Icon, gió, giờ phía dưới chart
+                    Positioned(
+                      left: posX - 15,
+                      top: infoTop,
+                      child: Column(
+                        children: [
+                          SvgPicture.asset(
+                            smallIcon,
+                            width: 30,
+                            height: 30,
+                            colorFilter: const ColorFilter.mode(
+                              Colors.white,
+                              BlendMode.srcIn,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            wind,
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
+                          ),
+                          Text(
+                            hour,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        wind,
-                        style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 12,
-                        ),
-                      ),
-                      Text(
-                        hour,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 );
               }),
             ],
@@ -585,4 +591,3 @@ class HourlyChart extends StatelessWidget {
     );
   }
 }
-
