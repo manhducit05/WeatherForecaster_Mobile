@@ -16,17 +16,32 @@ class RainPage extends StatefulWidget {
   @override
   State<RainPage> createState() => _RainPageState();
 }
+
 class _RainPageState extends State<RainPage> {
-// Danh sách location mẫu (bạn có thể thay bằng dữ liệu thật)
+  // Danh sách location mẫu (bạn có thể thay bằng dữ liệu thật)
   final List<Map<String, dynamic>> _locations = [
     {'name': 'Bangkok', 'lat': 13.7563, 'lon': 100.5018, 'tz': 'Asia/Bangkok'},
-    {'name': 'New York', 'lat': 40.7128, 'lon': -74.0060, 'tz': 'America/New_York'},
+    {
+      'name': 'New York',
+      'lat': 40.7128,
+      'lon': -74.0060,
+      'tz': 'America/New_York',
+    },
     {'name': 'London', 'lat': 51.5074, 'lon': -0.1278, 'tz': 'Europe/London'},
     {'name': 'Tokyo', 'lat': 35.6895, 'lon': 139.6917, 'tz': 'Asia/Tokyo'},
-    {'name': 'Sydney', 'lat': -33.8688, 'lon': 151.2093, 'tz': 'Australia/Sydney'},
+    {
+      'name': 'Sydney',
+      'lat': -33.8688,
+      'lon': 151.2093,
+      'tz': 'Australia/Sydney',
+    },
     {'name': 'Paris', 'lat': 48.8566, 'lon': 2.3522, 'tz': 'Europe/Paris'},
-    {'name': 'Los Angeles', 'lat': 34.0522, 'lon': -118.2437, 'tz': 'America/Los_Angeles'},
-
+    {
+      'name': 'Los Angeles',
+      'lat': 34.0522,
+      'lon': -118.2437,
+      'tz': 'America/Los_Angeles',
+    },
   ];
   @override
   void initState() {
@@ -35,11 +50,12 @@ class _RainPageState extends State<RainPage> {
     final currentTz = widget.weatherData['timezone'] ?? 'Asia/Bangkok';
 
     _selectedLocation = _locations.firstWhere(
-          (loc) => loc['tz'] == currentTz,
+      (loc) => loc['tz'] == currentTz,
       orElse: () => _locations.first,
     );
   }
-// Biến giữ location đang chọn
+
+  // Biến giữ location đang chọn
   Map<String, dynamic>? _selectedLocation;
   String _mapWeatherText(int code) {
     if (code == 0) return "Clear sky";
@@ -215,44 +231,47 @@ class _RainPageState extends State<RainPage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                Row(
-                children: [
-                const Icon(Icons.location_on, color: Colors.white),
-                const SizedBox(width: 4),
-                DropdownButtonHideUnderline(
-                  child: DropdownButton<Map<String, dynamic>>(
-                    dropdownColor: Colors.black87,
-                    value: _selectedLocation,
-                    icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white),
-                    items: _locations.map((loc) {
-                      return DropdownMenuItem<Map<String, dynamic>>(
-                        value: loc,
-                        child: Text(
-                          loc['name'],
-                          style: const TextStyle(
-                            fontFamily: 'Inter',
-                            fontSize: 18,
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
+                    Row(
+                      children: [
+                        const Icon(Icons.location_on, color: Colors.white),
+                        const SizedBox(width: 4),
+                        DropdownButtonHideUnderline(
+                          child: DropdownButton<Map<String, dynamic>>(
+                            dropdownColor: Colors.black87,
+                            value: _selectedLocation,
+                            icon: const Icon(
+                              Icons.keyboard_arrow_down,
+                              color: Colors.white,
+                            ),
+                            items: _locations.map((loc) {
+                              return DropdownMenuItem<Map<String, dynamic>>(
+                                value: loc,
+                                child: Text(
+                                  loc['name'],
+                                  style: const TextStyle(
+                                    fontFamily: 'Inter',
+                                    fontSize: 18,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: (val) {
+                              if (val == null) return;
+                              setState(() {
+                                _selectedLocation = val;
+                              });
+                              widget.onLocationChange(
+                                val['lat'],
+                                val['lon'],
+                                val['tz'],
+                              );
+                            },
                           ),
                         ),
-                      );
-                    }).toList(),
-                    onChanged: (val) {
-                      if (val == null) return;
-                      setState(() {
-                        _selectedLocation = val;
-                      });
-                      widget.onLocationChange(
-                        val['lat'],
-                        val['lon'],
-                        val['tz'],
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
+                      ],
+                    ),
                     const CircleAvatar(
                       radius: 18,
                       backgroundImage: AssetImage("assets/images/avatar.png"),
@@ -344,7 +363,10 @@ class _RainPageState extends State<RainPage> {
                           ),
                         ],
                       ),
-                      HourlyChart(items: hourlyPoints),
+                      HourlyChart(
+                        items: hourlyPoints,
+                        iconForCode: _smallIconForCode,
+                      ),
                       const SizedBox(height: 10),
 
                       Center(
@@ -442,11 +464,163 @@ class _DayWeather extends StatelessWidget {
   }
 }
 
-
+// class HourlyChart extends StatelessWidget {
+//   final List<Map<String, dynamic>> items;
+//
+//   const HourlyChart({super.key, required this.items});
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     if (items.isEmpty) {
+//       return const SizedBox(
+//         height: 140,
+//         child: Center(
+//           child: Text(
+//             "No hourly data",
+//             style: TextStyle(color: Colors.white70),
+//           ),
+//         ),
+//       );
+//     }
+//
+//     final spots = List.generate(
+//       items.length,
+//           (i) => FlSpot(i.toDouble(), (items[i]['temp'] as double)),
+//     );
+//
+//     final temps = items.map((e) => e['temp'] as double).toList();
+//     final minY = (temps.reduce((a, b) => a < b ? a : b) - 3).clamp(-50.0, 100.0);
+//     final maxY = (temps.reduce((a, b) => a > b ? a : b) + 3).clamp(-50.0, 100.0);
+//
+//     return SizedBox(
+//       height: 220,
+//       child: LayoutBuilder(
+//         builder: (context, constraints) {
+//           final chartWidth = constraints.maxWidth;
+//           const sidePadding = 40.0;
+//           final innerWidth = chartWidth - sidePadding * 2;
+//           final spacing = (items.length > 1) ? innerWidth / (items.length - 1) : 0.0;
+//           final chartHeight = 120.0; // cao của line chart
+//
+//           return Stack(
+//             children: [
+//               // Line chart
+//               Padding(
+//                 padding: const EdgeInsets.symmetric(horizontal: sidePadding),
+//                 child: LineChart(
+//                   LineChartData(
+//                     gridData: const FlGridData(show: false),
+//                     titlesData: const FlTitlesData(show: false),
+//                     borderData: FlBorderData(show: false),
+//                     minX: 0,
+//                     maxX: (spots.length - 1).toDouble(),
+//                     minY: minY,
+//                     maxY: maxY,
+//                     lineBarsData: [
+//                       LineChartBarData(
+//                         spots: spots,
+//                         isCurved: true,
+//                         color: Colors.amber,
+//                         barWidth: 2,
+//                         dotData: FlDotData(show: false),
+//                       ),
+//                     ],
+//                   ),
+//                 ),
+//               ),
+//               // Các nhãn và icon
+//               ...List.generate(items.length, (index) {
+//                 final item = items[index];
+//                 final temp = item['temp'] as double;
+//                 final hour = item['hour'] as String;
+//                 final wind = (item['wind'] as double).toStringAsFixed(1) + "km/h";
+//                 final code = item['code'] as int;
+//                 final posX = sidePadding + index * spacing;
+//
+//                 // Icon chọn theo code
+//                 final smallIcon = (code == 0)
+//                     ? "assets/images/sunny.svg"
+//                     : ([1, 2].contains(code))
+//                     ? "assets/images/partly_cloudy.svg"
+//                     : (code == 3)
+//                     ? "assets/images/cloud.svg"
+//                     : ([51, 53, 55, 61, 63, 65, 80, 81, 82].contains(code))
+//                     ? "assets/images/rainy.svg"
+//                     : ([95, 96, 99].contains(code))
+//                     ? "assets/images/thunderstorm.svg"
+//                     : "assets/images/cloud.svg";
+//
+//                 // Tính vị trí Y của điểm trên line chart
+//                 final relative = (temp - minY) / (maxY - minY);
+//                 final posY = (1 - relative) * chartHeight + 30; // 20 để tránh sát top
+//                 final infoTop = chartHeight + 30; // phần icon + gió + giờ bên dưới chart
+//
+//                 return Stack(
+//                   children: [
+//                     // Nhiệt độ phía trên line chart
+//                     Positioned(
+//                       left: posX - 15,
+//                       top: posY - 28,
+//                       child: Text(
+//                         "${temp.toInt()}°",
+//                         style: const TextStyle(
+//                           color: Colors.white,
+//                           fontWeight: FontWeight.w600,
+//                         ),
+//                       ),
+//                     ),
+//                     // Icon, gió, giờ phía dưới chart
+//                     Positioned(
+//                       left: posX - 15,
+//                       top: infoTop,
+//                       child: Column(
+//                         children: [
+//                           SvgPicture.asset(
+//                             smallIcon,
+//                             width: 30,
+//                             height: 30,
+//                             colorFilter: const ColorFilter.mode(
+//                               Colors.white,
+//                               BlendMode.srcIn,
+//                             ),
+//                           ),
+//                           const SizedBox(height: 6),
+//                           Text(
+//                             wind,
+//                             style: const TextStyle(
+//                               color: Colors.white70,
+//                               fontSize: 12,
+//                             ),
+//                           ),
+//                           Text(
+//                             hour,
+//                             style: const TextStyle(
+//                               color: Colors.white,
+//                               fontSize: 12,
+//                             ),
+//                           ),
+//                         ],
+//                       ),
+//                     ),
+//                   ],
+//                 );
+//               }),
+//             ],
+//           );
+//         },
+//       ),
+//     );
+//   }
+// }
 class HourlyChart extends StatelessWidget {
   final List<Map<String, dynamic>> items;
+  final String Function(int) iconForCode;
 
-  const HourlyChart({super.key, required this.items});
+  const HourlyChart({
+    super.key,
+    required this.items,
+    required this.iconForCode,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -464,12 +638,18 @@ class HourlyChart extends StatelessWidget {
 
     final spots = List.generate(
       items.length,
-          (i) => FlSpot(i.toDouble(), (items[i]['temp'] as double)),
+      (i) => FlSpot(i.toDouble(), (items[i]['temp'] as double)),
     );
 
     final temps = items.map((e) => e['temp'] as double).toList();
-    final minY = (temps.reduce((a, b) => a < b ? a : b) - 3).clamp(-50.0, 100.0);
-    final maxY = (temps.reduce((a, b) => a > b ? a : b) + 3).clamp(-50.0, 100.0);
+    final minY = (temps.reduce((a, b) => a < b ? a : b) - 3).clamp(
+      -50.0,
+      100.0,
+    );
+    final maxY = (temps.reduce((a, b) => a > b ? a : b) + 3).clamp(
+      -50.0,
+      100.0,
+    );
 
     return SizedBox(
       height: 220,
@@ -478,8 +658,10 @@ class HourlyChart extends StatelessWidget {
           final chartWidth = constraints.maxWidth;
           const sidePadding = 40.0;
           final innerWidth = chartWidth - sidePadding * 2;
-          final spacing = (items.length > 1) ? innerWidth / (items.length - 1) : 0.0;
-          final chartHeight = 120.0; // cao của line chart
+          final spacing = (items.length > 1)
+              ? innerWidth / (items.length - 1)
+              : 0.0;
+          final chartHeight = 120.0;
 
           return Stack(
             children: [
@@ -499,7 +681,7 @@ class HourlyChart extends StatelessWidget {
                       LineChartBarData(
                         spots: spots,
                         isCurved: true,
-                        color: Colors.white,
+                        color: Colors.amber,
                         barWidth: 2,
                         dotData: FlDotData(show: false),
                       ),
@@ -507,36 +689,27 @@ class HourlyChart extends StatelessWidget {
                   ),
                 ),
               ),
-              // Các nhãn và icon
+              // Icon + nhiệt độ + gió + giờ
               ...List.generate(items.length, (index) {
                 final item = items[index];
                 final temp = item['temp'] as double;
                 final hour = item['hour'] as String;
-                final wind = (item['wind'] as double).toStringAsFixed(1) + "km/h";
+                final wind =
+                    (item['wind'] as double).toStringAsFixed(1) + "km/h";
                 final code = item['code'] as int;
                 final posX = sidePadding + index * spacing;
 
-                // Icon chọn theo code
-                final smallIcon = (code == 0)
-                    ? "assets/images/sunny.svg"
-                    : ([1, 2].contains(code))
-                    ? "assets/images/partly_cloudy.svg"
-                    : (code == 3)
-                    ? "assets/images/cloud.svg"
-                    : ([51, 53, 55, 61, 63, 65, 80, 81, 82].contains(code))
-                    ? "assets/images/rainy.svg"
-                    : ([95, 96, 99].contains(code))
-                    ? "assets/images/thunderstorm.svg"
-                    : "assets/images/cloud.svg";
+                // Dùng hàm icon truyền từ RainPage
+                final smallIcon = iconForCode(code);
 
-                // Tính vị trí Y của điểm trên line chart
+                // Tính vị trí Y theo giá trị nhiệt độ
                 final relative = (temp - minY) / (maxY - minY);
-                final posY = (1 - relative) * chartHeight + 30; // 20 để tránh sát top
-                final infoTop = chartHeight + 30; // phần icon + gió + giờ bên dưới chart
+                final posY = (1 - relative) * chartHeight + 30;
+                final infoTop = chartHeight + 30;
 
                 return Stack(
                   children: [
-                    // Nhiệt độ phía trên line chart
+                    // Nhiệt độ phía trên
                     Positioned(
                       left: posX - 15,
                       top: posY - 28,
@@ -548,7 +721,7 @@ class HourlyChart extends StatelessWidget {
                         ),
                       ),
                     ),
-                    // Icon, gió, giờ phía dưới chart
+                    // Icon + gió + giờ phía dưới
                     Positioned(
                       left: posX - 15,
                       top: infoTop,
