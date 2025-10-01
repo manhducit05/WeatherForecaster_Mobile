@@ -191,7 +191,7 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
       };
     }).toList();
 
-    // Hourly forecast: now + next 3 slots
+    // Hourly forecast
     final List<Map<String, dynamic>> hourlyPoints = [];
     if (hourlyTimes.isNotEmpty && hourlyTemps.isNotEmpty) {
       final String selectedDateStr = dailyTimes[_selectedDateIndex];
@@ -474,155 +474,7 @@ class _DayWeather extends StatelessWidget {
   }
 }
 
-// class HourlyChart extends StatelessWidget {
-//   final List<Map<String, dynamic>> items;
-//
-//   const HourlyChart({super.key, required this.items});
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     if (items.isEmpty) {
-//       return const SizedBox(
-//         height: 140,
-//         child: Center(
-//           child: Text(
-//             "No hourly data",
-//             style: TextStyle(color: Colors.white70),
-//           ),
-//         ),
-//       );
-//     }
-//
-//     final spots = List.generate(
-//       items.length,
-//           (i) => FlSpot(i.toDouble(), (items[i]['temp'] as double)),
-//     );
-//
-//     final temps = items.map((e) => e['temp'] as double).toList();
-//     final minY = (temps.reduce((a, b) => a < b ? a : b) - 3).clamp(-50.0, 100.0);
-//     final maxY = (temps.reduce((a, b) => a > b ? a : b) + 3).clamp(-50.0, 100.0);
-//
-//     return SizedBox(
-//       height: 220,
-//       child: LayoutBuilder(
-//         builder: (context, constraints) {
-//           final chartWidth = constraints.maxWidth;
-//           const sidePadding = 40.0;
-//           final innerWidth = chartWidth - sidePadding * 2;
-//           final spacing = (items.length > 1) ? innerWidth / (items.length - 1) : 0.0;
-//           final chartHeight = 120.0; // cao của line chart
-//
-//           return Stack(
-//             children: [
-//               // Line chart
-//               Padding(
-//                 padding: const EdgeInsets.symmetric(horizontal: sidePadding),
-//                 child: LineChart(
-//                   LineChartData(
-//                     gridData: const FlGridData(show: false),
-//                     titlesData: const FlTitlesData(show: false),
-//                     borderData: FlBorderData(show: false),
-//                     minX: 0,
-//                     maxX: (spots.length - 1).toDouble(),
-//                     minY: minY,
-//                     maxY: maxY,
-//                     lineBarsData: [
-//                       LineChartBarData(
-//                         spots: spots,
-//                         isCurved: true,
-//                         color: Colors.amber,
-//                         barWidth: 2,
-//                         dotData: FlDotData(show: false),
-//                       ),
-//                     ],
-//                   ),
-//                 ),
-//               ),
-//               // Các nhãn và icon
-//               ...List.generate(items.length, (index) {
-//                 final item = items[index];
-//                 final temp = item['temp'] as double;
-//                 final hour = item['hour'] as String;
-//                 final wind = (item['wind'] as double).toStringAsFixed(1) + "km/h";
-//                 final code = item['code'] as int;
-//                 final posX = sidePadding + index * spacing;
-//
-//                 // Icon chọn theo code
-//                 final smallIcon = (code == 0)
-//                     ? "assets/images/sunny.svg"
-//                     : ([1, 2].contains(code))
-//                     ? "assets/images/partly_cloudy.svg"
-//                     : (code == 3)
-//                     ? "assets/images/cloud.svg"
-//                     : ([51, 53, 55, 61, 63, 65, 80, 81, 82].contains(code))
-//                     ? "assets/images/rainy.svg"
-//                     : ([95, 96, 99].contains(code))
-//                     ? "assets/images/thunderstorm.svg"
-//                     : "assets/images/cloud.svg";
-//
-//                 // Tính vị trí Y của điểm trên line chart
-//                 final relative = (temp - minY) / (maxY - minY);
-//                 final posY = (1 - relative) * chartHeight + 30; // 20 để tránh sát top
-//                 final infoTop = chartHeight + 30; // phần icon + gió + giờ bên dưới chart
-//
-//                 return Stack(
-//                   children: [
-//                     // Nhiệt độ phía trên line chart
-//                     Positioned(
-//                       left: posX - 15,
-//                       top: posY - 28,
-//                       child: Text(
-//                         "${temp.toInt()}°",
-//                         style: const TextStyle(
-//                           color: Colors.white,
-//                           fontWeight: FontWeight.w600,
-//                         ),
-//                       ),
-//                     ),
-//                     // Icon, gió, giờ phía dưới chart
-//                     Positioned(
-//                       left: posX - 15,
-//                       top: infoTop,
-//                       child: Column(
-//                         children: [
-//                           SvgPicture.asset(
-//                             smallIcon,
-//                             width: 30,
-//                             height: 30,
-//                             colorFilter: const ColorFilter.mode(
-//                               Colors.white,
-//                               BlendMode.srcIn,
-//                             ),
-//                           ),
-//                           const SizedBox(height: 6),
-//                           Text(
-//                             wind,
-//                             style: const TextStyle(
-//                               color: Colors.white70,
-//                               fontSize: 12,
-//                             ),
-//                           ),
-//                           Text(
-//                             hour,
-//                             style: const TextStyle(
-//                               color: Colors.white,
-//                               fontSize: 12,
-//                             ),
-//                           ),
-//                         ],
-//                       ),
-//                     ),
-//                   ],
-//                 );
-//               }),
-//             ],
-//           );
-//         },
-//       ),
-//     );
-//   }
-// }
-class HourlyChart extends StatelessWidget {
+class HourlyChart extends StatefulWidget {
   final List<Map<String, dynamic>> items;
   final String Function(int) iconForCode;
 
@@ -633,7 +485,45 @@ class HourlyChart extends StatelessWidget {
   });
 
   @override
+  State<HourlyChart> createState() => _HourlyChartState();
+}
+
+class _HourlyChartState extends State<HourlyChart> {
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _scrollToNow();
+  }
+
+  void _scrollToNow() {
+    // tìm giờ hiện tại
+    final now = DateTime.now();
+    final nowHour = now.hour.toString().padLeft(2, '0');
+
+    // tìm index trong items
+    final indexNow = widget.items.indexWhere((item) {
+      // item['hour'] dạng "2025-10-02 13:00" hoặc "13:00" => tùy bạn parse
+      final hourStr = item['hour'] as String;
+      // kiểm tra nếu chuỗi giờ chứa giờ hiện tại
+      return hourStr.contains("$nowHour:");
+    });
+
+    if (indexNow != -1) {
+      // mỗi khối rộng 80px
+      final targetOffset = indexNow * 80.0;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_scrollController.hasClients) {
+          _scrollController.jumpTo(targetOffset);
+        }
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final items = widget.items;
     if (items.isEmpty) {
       return const SizedBox(
         height: 140,
@@ -648,128 +538,151 @@ class HourlyChart extends StatelessWidget {
 
     final spots = List.generate(
       items.length,
-      (i) => FlSpot(i.toDouble(), (items[i]['temp'] as double)),
+          (i) => FlSpot(i.toDouble(), (items[i]['temp'] as double)),
     );
 
     final temps = items.map((e) => e['temp'] as double).toList();
-    final minY = (temps.reduce((a, b) => a < b ? a : b) - 3).clamp(
-      -50.0,
-      100.0,
-    );
-    final maxY = (temps.reduce((a, b) => a > b ? a : b) + 3).clamp(
-      -50.0,
-      100.0,
-    );
+    final minY = (temps.reduce((a, b) => a < b ? a : b) - 3).clamp(-50.0, 100.0);
+    final maxY = (temps.reduce((a, b) => a > b ? a : b) + 3).clamp(-50.0, 100.0);
 
+    // giờ hiện tại
+    final now = DateTime.now();
+    final nowHour = now.hour.toString().padLeft(2, '0');
     return SizedBox(
       height: 220,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final chartWidth = constraints.maxWidth;
-          const sidePadding = 40.0;
-          final innerWidth = chartWidth - sidePadding * 2;
-          final spacing = (items.length > 1)
-              ? innerWidth / (items.length - 1)
-              : 0.0;
-          final chartHeight = 120.0;
+      child: SingleChildScrollView(
+        controller: _scrollController,
+        scrollDirection: Axis.horizontal,
+        child: SizedBox(
+          width: items.length * 80,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final chartWidth = constraints.maxWidth;
+              const sidePadding = 40.0;
+              final innerWidth = chartWidth - sidePadding * 2;
+              final spacing = (items.length > 1)
+                  ? innerWidth / (items.length - 1)
+                  : 0.0;
+              final chartHeight = 120.0;
 
-          return Stack(
-            children: [
-              // Line chart
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: sidePadding),
-                child: LineChart(
-                  LineChartData(
-                    gridData: const FlGridData(show: false),
-                    titlesData: const FlTitlesData(show: false),
-                    borderData: FlBorderData(show: false),
-                    minX: 0,
-                    maxX: (spots.length - 1).toDouble(),
-                    minY: minY,
-                    maxY: maxY,
-                    lineBarsData: [
-                      LineChartBarData(
-                        spots: spots,
-                        isCurved: true,
-                        color: Colors.amber,
-                        barWidth: 2,
-                        dotData: FlDotData(show: false),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              // Icon + nhiệt độ + gió + giờ
-              ...List.generate(items.length, (index) {
-                final item = items[index];
-                final temp = item['temp'] as double;
-                final hour = item['hour'] as String;
-                final wind =
-                    (item['wind'] as double).toStringAsFixed(1) + "km/h";
-                final code = item['code'] as int;
-                final posX = sidePadding + index * spacing;
-
-                // Dùng hàm icon truyền từ RainPage
-                final smallIcon = iconForCode(code);
-
-                // Tính vị trí Y theo giá trị nhiệt độ
-                final relative = (temp - minY) / (maxY - minY);
-                final posY = (1 - relative) * chartHeight + 30;
-                final infoTop = chartHeight + 30;
-
-                return Stack(
-                  children: [
-                    // Nhiệt độ phía trên
-                    Positioned(
-                      left: posX - 15,
-                      top: posY - 28,
-                      child: Text(
-                        "${temp.toInt()}°",
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                    // Icon + gió + giờ phía dưới
-                    Positioned(
-                      left: posX - 15,
-                      top: infoTop,
-                      child: Column(
-                        children: [
-                          SvgPicture.asset(
-                            smallIcon,
-                            width: 30,
-                            height: 30,
-                            colorFilter: const ColorFilter.mode(
-                              Colors.white,
-                              BlendMode.srcIn,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            wind,
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 12,
-                            ),
-                          ),
-                          Text(
-                            hour,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                            ),
+              return Stack(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: sidePadding),
+                    child: LineChart(
+                      LineChartData(
+                        gridData: const FlGridData(show: false),
+                        titlesData: const FlTitlesData(show: false),
+                        borderData: FlBorderData(show: false),
+                        minX: 0,
+                        maxX: (spots.length - 1).toDouble(),
+                        minY: minY,
+                        maxY: maxY,
+                        lineBarsData: [
+                          LineChartBarData(
+                            spots: spots,
+                            isCurved: true,
+                            color: Colors.amber,
+                            barWidth: 2,
+                            dotData: FlDotData(show: false),
                           ),
                         ],
                       ),
                     ),
-                  ],
-                );
-              }),
-            ],
-          );
-        },
+                  ),
+
+                  ...List.generate(items.length, (index) {
+                    final item = items[index];
+                    final temp = item['temp'] as double;
+                    final hourRaw = item['hour'] as String;
+                    final wind = "${(item['wind'] as double).toStringAsFixed(1)}km/h";
+                    final code = item['code'] as int;
+                    final smallIcon = widget.iconForCode(code);
+
+                    // Nếu giờ chứa giờ hiện tại -> hiển thị "Now"
+                    DateTime? parsed;
+                    try {
+                      parsed = DateTime.parse(hourRaw);
+                    } catch (_) {
+                      // fallback nếu chỉ có HH:mm
+                      final now = DateTime.now();
+                      final parts = hourRaw.split(':'); // ["13","00"]
+                      parsed = DateTime(
+                        now.year,
+                        now.month,
+                        now.day,
+                        int.parse(parts[0]),
+                        int.parse(parts[1]),
+                      );
+                    }
+
+                    final nowDt = DateTime.now();
+                    final isSameDay = parsed.year == nowDt.year &&
+                        parsed.month == nowDt.month &&
+                        parsed.day == nowDt.day;
+
+                    final isSameHour = parsed.hour == nowDt.hour;
+
+                    final displayHour = (isSameDay && isSameHour) ? "Now" : hourRaw;
+
+                    final posX = sidePadding + index * spacing;
+                    final relative = (temp - minY) / (maxY - minY);
+                    final posY = (1 - relative) * chartHeight + 30;
+                    final infoTop = chartHeight + 30;
+
+                    return Stack(
+                      children: [
+                        Positioned(
+                          left: posX - 15,
+                          top: posY - 28,
+                          child: Text(
+                            "${temp.toInt()}°",
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          left: posX - 15,
+                          top: infoTop,
+                          child: Column(
+                            children: [
+                              SvgPicture.asset(
+                                smallIcon,
+                                width: 30,
+                                height: 30,
+                                colorFilter: const ColorFilter.mode(
+                                  Colors.white,
+                                  BlendMode.srcIn,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                wind,
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              Text(
+                                displayHour,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    );
+                  }),
+                ],
+              );
+            },
+          ),
+        ),
       ),
     );
   }
