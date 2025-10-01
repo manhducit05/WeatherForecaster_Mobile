@@ -3,9 +3,7 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-
-import '../pages/default_page.dart';
-import '../pages/rain_page.dart';
+import '../pages/detail_weather_page.dart';
 
 class WeatherPage extends StatefulWidget {
   const WeatherPage({super.key});
@@ -30,7 +28,7 @@ class _WeatherPageState extends State<WeatherPage> {
     fetchWeather();
   }
 
-  // ✅ Hàm cho phép đổi vị trí
+  // Hàm cho phép đổi vị trí
   void updateLocation(double lat, double lon, String tz) {
     setState(() {
       latitude = lat;
@@ -40,6 +38,8 @@ class _WeatherPageState extends State<WeatherPage> {
     fetchWeather();
   }
 
+
+  // fetch dữ liệu
   Future<void> fetchWeather() async {
     setState(() {
       _loading = true;
@@ -49,10 +49,10 @@ class _WeatherPageState extends State<WeatherPage> {
     try {
       final uri = Uri.parse(
         'https://api.open-meteo.com/v1/forecast'
-            '?latitude=$latitude&longitude=$longitude'
-            '&hourly=temperature_2m,precipitation,weathercode,windspeed_10m'
-            '&daily=temperature_2m_max,temperature_2m_min,weathercode'
-            '&timezone=$timezone',
+        '?latitude=$latitude&longitude=$longitude'
+        '&hourly=temperature_2m,precipitation,weathercode,windspeed_10m'
+        '&daily=temperature_2m_max,temperature_2m_min,weathercode'
+        '&timezone=$timezone',
       );
 
       final res = await http.get(uri);
@@ -85,10 +85,22 @@ class _WeatherPageState extends State<WeatherPage> {
   bool isRainy(int? code) {
     if (code == null) return false;
     return [
-      51, 53, 55, 56, 57,
-      61, 63, 65, 66, 67,
-      80, 81, 82,
-      95, 96, 99
+      51,
+      53,
+      55,
+      56,
+      57,
+      61,
+      63,
+      65,
+      66,
+      67,
+      80,
+      81,
+      82,
+      95,
+      96,
+      99,
     ].contains(code);
   }
 
@@ -112,9 +124,7 @@ class _WeatherPageState extends State<WeatherPage> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     if (_error != null) {
@@ -126,7 +136,11 @@ class _WeatherPageState extends State<WeatherPage> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.red)),
+                Text(
+                  _error!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.red),
+                ),
                 const SizedBox(height: 12),
                 ElevatedButton(
                   onPressed: fetchWeather,
@@ -146,17 +160,10 @@ class _WeatherPageState extends State<WeatherPage> {
     }
 
     final int? todayCode = _extractTodayWeatherCode(weatherData!);
-
-    if (isRainy(todayCode)) {
-      return RainPage(
-        weatherData: weatherData!,
-        onLocationChange: updateLocation,
-      );
-    } else {
-      return HomePage(
-        weatherData: weatherData!,
-        onLocationChange: updateLocation,
-      );
-    }
+    return DetailWeatherPage(
+      weatherData: weatherData!,
+      onLocationChange: updateLocation,
+      isRainy: isRainy(todayCode),
+    );
   }
 }

@@ -3,21 +3,22 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 
-class RainPage extends StatefulWidget {
+class DetailWeatherPage extends StatefulWidget {
   final Map<String, dynamic> weatherData;
   final Function(double lat, double lon, String tz) onLocationChange;
+  final bool isRainy;
 
-  const RainPage({
+  const DetailWeatherPage({
     super.key,
     required this.weatherData,
     required this.onLocationChange,
+    required this.isRainy,
   });
 
   @override
-  State<RainPage> createState() => _RainPageState();
+  State<DetailWeatherPage> createState() => _DetailWeatherPage();
 }
-
-class _RainPageState extends State<RainPage> {
+class _DetailWeatherPage extends State<DetailWeatherPage> {
   // Danh sách location mẫu (bạn có thể thay bằng dữ liệu thật)
   final List<Map<String, dynamic>> _locations = [
     {'name': 'Bangkok', 'lat': 13.7563, 'lon': 100.5018, 'tz': 'Asia/Bangkok'},
@@ -54,7 +55,6 @@ class _RainPageState extends State<RainPage> {
       orElse: () => _locations.first,
     );
   }
-
   // Biến giữ location đang chọn
   Map<String, dynamic>? _selectedLocation;
   String _mapWeatherText(int code) {
@@ -101,6 +101,11 @@ class _RainPageState extends State<RainPage> {
     return timesIso.length - 1;
   }
 
+  // xử lý ngày được chọn để xem thời tiết
+  int _selectedDateIndex = 0;
+
+
+
   @override
   Widget build(BuildContext context) {
     // safety checks
@@ -125,14 +130,15 @@ class _RainPageState extends State<RainPage> {
 
     // Today
     final todayCode = (dailyCodes.isNotEmpty
-        ? (dailyCodes[0] as int)
+        ? (dailyCodes[_selectedDateIndex] as int)
         : (hourlyCodes.isNotEmpty ? hourlyCodes[0] : 3));
 
     final todayMax = dailyMax.isNotEmpty
-        ? (dailyMax[0] as num).toDouble()
+        ? (dailyMax[_selectedDateIndex] as num).toDouble()
         : (hourlyTemps.isNotEmpty ? hourlyTemps[0] : 0.0);
+
     final rawDateStr = dailyTimes.isNotEmpty
-        ? dailyTimes[0]
+        ? dailyTimes[_selectedDateIndex]
         : DateTime.now().toIso8601String().split('T')[0];
 
     // parse string thành DateTime
@@ -142,7 +148,6 @@ class _RainPageState extends State<RainPage> {
     final todayDate = DateFormat('EEEE | dd MMM yyyy').format(parsedDate);
 
     // Build 5-day forecast (use available daily length)
-    // --- Build 5-day forecast: 2 ngày trước, hôm nay, 2 ngày sau (nếu có) ---
 
     // Xác định index hôm nay
     int todayIndex = dailyTimes.indexWhere((t) {
@@ -189,39 +194,36 @@ class _RainPageState extends State<RainPage> {
     // Hourly forecast: now + next 3 slots
     final List<Map<String, dynamic>> hourlyPoints = [];
     if (hourlyTimes.isNotEmpty && hourlyTemps.isNotEmpty) {
-      final now = DateTime.now();
-      int startIndex = _nearestHourlyIndex(hourlyTimes, now);
+      final String selectedDateStr = dailyTimes[_selectedDateIndex];
+      final DateTime dayStart = DateTime.parse("${selectedDateStr}T00:00:00");
+      final DateTime dayEnd = dayStart.add(const Duration(days: 1));
 
-      for (int i = 0; i < 4; i++) {
-        int idx = startIndex + i * 2;
-        if (idx >= hourlyTimes.length) idx = hourlyTimes.length - 1;
-        final dt = DateTime.parse(hourlyTimes[idx]);
-        final label = (i == 0)
-            ? "Now"
-            : "${dt.hour.toString().padLeft(2, '0')}:00";
-        hourlyPoints.add({
-          'hour': label,
-          'temp': (idx < hourlyTemps.length)
-              ? hourlyTemps[idx]
-              : hourlyTemps.last,
-          'wind': (idx < hourlyWinds.length)
-              ? hourlyWinds[idx]
-              : (hourlyWinds.isNotEmpty ? hourlyWinds.last : 0.0),
-          'code': (idx < hourlyCodes.length) ? hourlyCodes[idx] : todayCode,
-        });
+      for (int i = 0; i < hourlyTimes.length; i++) {
+        DateTime t = DateTime.parse(hourlyTimes[i]);
+        if (t.isAfter(dayStart) && t.isBefore(dayEnd)) {
+          hourlyPoints.add({
+            'hour': "${t.hour.toString().padLeft(2, '0')}:00",
+            'temp': hourlyTemps[i],
+            'wind': (i < hourlyWinds.length) ? hourlyWinds[i] : 0.0,
+            'code': (i < hourlyCodes.length) ? hourlyCodes[i] : todayCode,
+          });
+        }
       }
     }
 
     return Scaffold(
+      backgroundColor: widget.isRainy ? null : const Color(0xFFD59A2F),
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        decoration: const BoxDecoration(
+        decoration: widget.isRainy
+            ? const BoxDecoration(
           image: DecorationImage(
             image: AssetImage("assets/images/bg_rainy.png"),
             fit: BoxFit.cover,
           ),
-        ),
+        )
+            : null,
         child: SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(16.0),
@@ -314,14 +316,22 @@ class _RainPageState extends State<RainPage> {
                 // --- WEEK FORECAST ---
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: fiveDays.map((d) {
-                    final iconPath = _smallIconForCode(d['code'] as int);
-                    return _DayWeather(
-                      day: d['day'] as String,
-                      iconPath: iconPath,
-                      level: (d['isToday'] == true
-                          ? 0
-                          : 2), // hôm nay = nổi bật, còn lại mờ hơn
+                  children: indices.map((idx) {
+                    final dt = DateTime.tryParse(dailyTimes[idx]) ?? DateTime.now();
+                    final iconPath = _smallIconForCode(dailyCodes[idx] as int);
+                    final isSelected = idx == _selectedDateIndex;
+
+                    return GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _selectedDateIndex = idx;
+                        });
+                      },
+                      child: _DayWeather(
+                        day: _weekdayShort(dt),
+                        iconPath: iconPath,
+                        level: isSelected ? 0 : 2,
+                      ),
                     );
                   }).toList(),
                 ),
