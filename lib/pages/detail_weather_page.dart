@@ -111,8 +111,8 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
     final dailyCodes = List<dynamic>.from(daily['weathercode'] ?? []);
     if (_selectedDateIndex >= dailyCodes.length) return false;
     final code = dailyCodes[_selectedDateIndex] as int;
-    // Các code mưa: 51,53,55,61,63,65,80,81,82
-    return [51, 53, 55, 61, 63, 65, 80, 81, 82].contains(code);
+    // Các code mưa: 51,53,55,61,63,65,80,81,82; bão: 95,96,97
+    return [51, 53, 55, 61, 63, 65, 80, 81, 82,  95, 96, 97].contains(code);
   }
 
   @override

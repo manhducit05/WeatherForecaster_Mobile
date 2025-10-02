@@ -84,10 +84,6 @@ class _WeatherPageState extends State<WeatherPage> {
     }
   }
 
-
-
-
-
   int? _extractTodayWeatherCode(Map<String, dynamic> data) {
     try {
       final daily = data['daily'] as Map<String, dynamic>?;
