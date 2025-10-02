@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -69,50 +70,47 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
     return "Unknown";
   }
 
+  // hàm chọn icon trạng thái thời tiết lớn
   String _bigIconForCode(int code) {
     if (code == 0) return "assets/images/sun.svg";
     if ([1, 2].contains(code)) return "assets/images/partly_cloudy.svg";
     if (code == 3) return "assets/images/cloud.svg";
-    if ([51, 53, 55, 61, 63, 65, 80, 81, 82].contains(code))
+    if ([51, 53, 55, 61, 63, 65, 80, 81, 82].contains(code)) {
       return "assets/images/rainy.svg";
+    }
     if ([95, 96, 99].contains(code)) return "assets/images/thunderstorm.svg";
     return "assets/images/cloud.svg";
   }
 
+  // hàm chọn icon trạng thái thời tiết nhỏ
   String _smallIconForCode(int code) {
     if (code == 0) return "assets/images/sun.svg";
     if ([1, 2].contains(code)) return "assets/images/partly_cloudy.svg";
     if (code == 3) return "assets/images/cloud.svg";
-    if ([51, 53, 55, 61, 63, 65, 80, 81, 82].contains(code))
+    if ([51, 53, 55, 61, 63, 65, 80, 81, 82].contains(code)) {
       return "assets/images/rainy.svg";
+    }
     if ([95, 96, 99].contains(code)) return "assets/images/thunderstorm.svg";
     return "assets/images/cloud.svg";
   }
 
+  // Format định dạng ngày
   String _weekdayShort(DateTime d) {
     const names = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
     return names[(d.weekday - 1) % 7];
   }
 
-  int _nearestHourlyIndex(List<String> timesIso, DateTime now) {
-    for (int i = 0; i < timesIso.length; i++) {
-      final dt = DateTime.parse(timesIso[i]);
-      if (!dt.isBefore(now)) return i;
-    }
-    return timesIso.length - 1;
-  }
-
-  // xử lý ngày được chọn để xem thời tiết
+  // Xử lý ngày được chọn để xem thời tiết
   int _selectedDateIndex = 0;
 
-  // xử lý trạng thái thời tiết khi đổi ngày
+  // Xử lý trạng thái thời tiết khi đổi ngày
   bool get isRainySelectedDay {
     final daily = (widget.weatherData['daily'] ?? {}) as Map<String, dynamic>;
     final dailyCodes = List<dynamic>.from(daily['weathercode'] ?? []);
     if (_selectedDateIndex >= dailyCodes.length) return false;
     final code = dailyCodes[_selectedDateIndex] as int;
     // Các code mưa: 51,53,55,61,63,65,80,81,82; bão: 95,96,97
-    return [51, 53, 55, 61, 63, 65, 80, 81, 82,  95, 96, 97].contains(code);
+    return [51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 97].contains(code);
   }
 
   @override
@@ -156,8 +154,6 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
     // format thành string để hiển thị
     final todayDate = DateFormat('EEEE | dd MMM yyyy').format(parsedDate);
 
-    // Build 5-day forecast (use available daily length)
-
     // Xác định index hôm nay
     int todayIndex = dailyTimes.indexWhere((t) {
       final dt = DateTime.tryParse(t);
@@ -188,18 +184,6 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
       indices.add(i);
     }
 
-    // Build danh sách 5 ngày
-    final fiveDays = indices.map((idx) {
-      final dt = DateTime.tryParse(dailyTimes[idx]) ?? DateTime.now();
-      return {
-        'day': _weekdayShort(dt),
-        'max': (dailyMax[idx] as num).toDouble(),
-        'min': (dailyMin[idx] as num).toDouble(),
-        'code': (dailyCodes[idx] as num).toInt(),
-        'isToday': idx == todayIndex, // <-- đánh dấu hôm nay
-      };
-    }).toList();
-
     // Hourly forecast
     final List<Map<String, dynamic>> hourlyPoints = [];
     if (hourlyTimes.isNotEmpty && hourlyTemps.isNotEmpty) {
@@ -218,6 +202,175 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
           });
         }
       }
+    }
+    // report dialog
+    void showIncidentReportDialog(BuildContext context) {
+      String? tempFeeling;
+      String? weatherCondition;
+      TextEditingController otherController = TextEditingController();
+
+      showDialog(
+        context: context,
+        builder: (context) {
+          return StatefulBuilder(
+            builder: (context, setState) {
+              bool isFormValid =
+                  tempFeeling != null &&
+                  weatherCondition != null &&
+                  otherController.text.trim().isNotEmpty;
+
+              return AlertDialog(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+                contentPadding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+                actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+                title: const Text(
+                  "Incident Report",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                ),
+                content: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        // ✅ 0. Subtitle
+                        "Help us improve the weather app by sharing the weather conditions at your location.",
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                      const SizedBox(height: 20),
+                      // ✅ 1. Temperature perception
+                      const Text(
+                        "Current temperature (how it feels)",
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 10,
+                        children: [
+                          ChoiceChip(
+                            label: const Text("Feels warmer"),
+                            selected: tempFeeling == "Feels warmer",
+                            selectedColor: Colors.amber.shade300,
+                            onSelected: (v) {
+                              setState(() => tempFeeling = "Feels warmer");
+                            },
+                          ),
+                          ChoiceChip(
+                            label: const Text("Accurate"),
+                            selected: tempFeeling == "Accurate",
+                            selectedColor: Colors.amber.shade300,
+                            onSelected: (v) {
+                              setState(() => tempFeeling = "Accurate");
+                            },
+                          ),
+                          ChoiceChip(
+                            label: const Text("Feels colder"),
+                            selected: tempFeeling == "Feels colder",
+                            selectedColor: Colors.amber.shade300,
+                            onSelected: (v) {
+                              setState(() => tempFeeling = "Feels colder");
+                            },
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // ✅ 2. Weather condition
+                      const Text(
+                        "Current weather condition",
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 10,
+                        children: [
+                          for (var item in [
+                            "Clear",
+                            "Mostly cloudy",
+                            "Partly cloudy",
+                            "Rain",
+                            "Snow",
+                            "Other",
+                          ])
+                            ChoiceChip(
+                              label: Text(item),
+                              selected: weatherCondition == item,
+                              selectedColor: Colors.amber.shade300,
+                              onSelected: (v) {
+                                setState(() => weatherCondition = item);
+                              },
+                            ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // ✅ 3. Additional comments
+                      const Text(
+                        "Additional comments",
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: otherController,
+                        maxLines: 3,
+                        onChanged: (v) => setState(() {}),
+                        decoration: InputDecoration(
+                          hintText:
+                              "Share your questions and suggestions with us.",
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text("Cancel"),
+                  ),
+                  ElevatedButton(
+                    onPressed: isFormValid
+                        ? () {
+                            if (kDebugMode) {
+                              print("Temp feeling: $tempFeeling");
+                              print("Weather condition: $weatherCondition");
+                              print("Comments: ${otherController.text}");
+                            }
+                            // Đóng dialog hiện tại
+                            Navigator.pop(context);
+
+                            // Hiển thị thông báo thành công
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text("Report submitted successfully!"),
+                                backgroundColor: Colors.green,
+                                duration: Duration(seconds: 2),
+                              ),
+                            );
+                          }
+                        : null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: isFormValid
+                          ? Colors.amber
+                          : Colors.grey.shade400,
+                      disabledBackgroundColor: Colors.grey.shade300,
+                      foregroundColor: Colors.black,
+                    ),
+                    child: const Text("Submit"),
+                  ),
+                ],
+              );
+            },
+          );
+        },
+      );
     }
 
     return Scaffold(
@@ -320,7 +473,7 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
                             actions: [
                               TextButton(
                                 onPressed: () => Navigator.pop(context),
-                                child: const Text("Đóng"),
+                                child: const Text("Close"),
                               ),
                             ],
                           ),
@@ -410,7 +563,7 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
                           padding: const EdgeInsets.symmetric(vertical: 4),
                           decoration: isSelected
                               ? BoxDecoration(
-                                  color: Colors.white.withOpacity(0.3),
+                                  color: Colors.white.withValues(alpha: 0.3),
                                   borderRadius: BorderRadius.circular(12),
                                 )
                               : null,
@@ -460,7 +613,7 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
                   margin: const EdgeInsets.only(top: 5),
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.15),
+                    color: Colors.white.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Column(
@@ -510,9 +663,11 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
                               vertical: 12,
                             ),
                           ),
-                          onPressed: () {},
+                          onPressed: () {
+                            showIncidentReportDialog(context);
+                          },
                           child: const Text(
-                            "5-day forecast",
+                            "Incident Report",
                             style: TextStyle(
                               color: Colors.black87,
                               fontSize: 12,
@@ -527,64 +682,6 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-// --- CUSTOM WIDGETS ---
-class _DayWeather extends StatelessWidget {
-  final String day;
-  final String iconPath;
-  final int level;
-
-  const _DayWeather({
-    required this.day,
-    required this.iconPath,
-    this.level = 1,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    double fontSize;
-    double iconSize;
-    double opacity;
-
-    switch (level) {
-      case 0:
-        fontSize = 20;
-        iconSize = 35;
-        opacity = 1.0;
-        break;
-      case 1:
-        fontSize = 16;
-        iconSize = 30;
-        opacity = 0.7;
-        break;
-      case 2:
-      default:
-        fontSize = 14;
-        iconSize = 28;
-        opacity = 0.5;
-        break;
-    }
-
-    return Opacity(
-      opacity: opacity,
-      child: Column(
-        children: [
-          Text(
-            day,
-            style: TextStyle(color: Colors.white70, fontSize: fontSize),
-          ),
-          const SizedBox(height: 8),
-          SvgPicture.asset(
-            iconPath,
-            width: iconSize,
-            height: iconSize,
-            colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-          ),
-        ],
       ),
     );
   }
@@ -667,9 +764,6 @@ class _HourlyChartState extends State<HourlyChart> {
       100.0,
     );
 
-    // giờ hiện tại
-    final now = DateTime.now();
-    final nowHour = now.hour.toString().padLeft(2, '0');
     return SizedBox(
       height: 220,
       child: SingleChildScrollView(
