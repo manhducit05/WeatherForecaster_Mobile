@@ -39,6 +39,8 @@ class _WeatherPageState extends State<WeatherPage> {
   }
 
 
+
+
   // fetch dữ liệu
   Future<void> fetchWeather() async {
     setState(() {
@@ -82,27 +84,9 @@ class _WeatherPageState extends State<WeatherPage> {
     }
   }
 
-  bool isRainy(int? code) {
-    if (code == null) return false;
-    return [
-      51,
-      53,
-      55,
-      56,
-      57,
-      61,
-      63,
-      65,
-      66,
-      67,
-      80,
-      81,
-      82,
-      95,
-      96,
-      99,
-    ].contains(code);
-  }
+
+
+
 
   int? _extractTodayWeatherCode(Map<String, dynamic> data) {
     try {
@@ -163,7 +147,6 @@ class _WeatherPageState extends State<WeatherPage> {
     return DetailWeatherPage(
       weatherData: weatherData!,
       onLocationChange: updateLocation,
-      isRainy: isRainy(todayCode),
     );
   }
 }

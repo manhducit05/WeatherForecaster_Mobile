@@ -10,6 +10,7 @@ class AppRoutes {
         return MaterialPageRoute(
           builder: (_) => const WeatherPage(),
         );
+
       default:
         return _errorRoute("No route defined for ${settings.name}");
     }

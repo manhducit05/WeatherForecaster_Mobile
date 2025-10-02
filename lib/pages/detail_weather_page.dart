@@ -6,13 +6,11 @@ import 'package:intl/intl.dart';
 class DetailWeatherPage extends StatefulWidget {
   final Map<String, dynamic> weatherData;
   final Function(double lat, double lon, String tz) onLocationChange;
-  final bool isRainy;
 
   const DetailWeatherPage({
     super.key,
     required this.weatherData,
     required this.onLocationChange,
-    required this.isRainy,
   });
 
   @override
@@ -104,8 +102,15 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
   // xử lý ngày được chọn để xem thời tiết
   int _selectedDateIndex = 0;
 
-
-
+  // xử lý trạng thái thời tiết khi đổi ngày
+  bool get isRainySelectedDay {
+    final daily = (widget.weatherData['daily'] ?? {}) as Map<String, dynamic>;
+    final dailyCodes = List<dynamic>.from(daily['weathercode'] ?? []);
+    if (_selectedDateIndex >= dailyCodes.length) return false;
+    final code = dailyCodes[_selectedDateIndex] as int;
+    // Các code mưa: 51,53,55,61,63,65,80,81,82
+    return [51, 53, 55, 61, 63, 65, 80, 81, 82].contains(code);
+  }
   @override
   Widget build(BuildContext context) {
     // safety checks
@@ -212,11 +217,11 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
     }
 
     return Scaffold(
-      backgroundColor: widget.isRainy ? null : const Color(0xFFD59A2F),
+      backgroundColor: isRainySelectedDay ? null : const Color(0xFFD59A2F),
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        decoration: widget.isRainy
+        decoration: isRainySelectedDay
             ? const BoxDecoration(
           image: DecorationImage(
             image: AssetImage("assets/images/bg_rainy.png"),
