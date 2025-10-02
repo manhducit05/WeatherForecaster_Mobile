@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
+import '../constant/text.dart';
 
 class DetailWeatherPage extends StatefulWidget {
   final Map<String, dynamic> weatherData;
@@ -16,6 +17,7 @@ class DetailWeatherPage extends StatefulWidget {
   @override
   State<DetailWeatherPage> createState() => _DetailWeatherPage();
 }
+
 class _DetailWeatherPage extends State<DetailWeatherPage> {
   // Danh sách location mẫu (bạn có thể thay bằng dữ liệu thật)
   final List<Map<String, dynamic>> _locations = [
@@ -53,6 +55,7 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
       orElse: () => _locations.first,
     );
   }
+
   // Biến giữ location đang chọn
   Map<String, dynamic>? _selectedLocation;
   String _mapWeatherText(int code) {
@@ -111,6 +114,7 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
     // Các code mưa: 51,53,55,61,63,65,80,81,82
     return [51, 53, 55, 61, 63, 65, 80, 81, 82].contains(code);
   }
+
   @override
   Widget build(BuildContext context) {
     // safety checks
@@ -223,11 +227,11 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
         height: double.infinity,
         decoration: isRainySelectedDay
             ? const BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage("assets/images/bg_rainy.png"),
-            fit: BoxFit.cover,
-          ),
-        )
+                image: DecorationImage(
+                  image: AssetImage("assets/images/bg_rainy.png"),
+                  fit: BoxFit.cover,
+                ),
+              )
             : null,
         child: SafeArea(
           child: Padding(
@@ -245,6 +249,7 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
                         DropdownButtonHideUnderline(
                           child: DropdownButton<Map<String, dynamic>>(
                             dropdownColor: Colors.black87,
+                            elevation: 0, // loại bỏ bóng
                             value: _selectedLocation,
                             icon: const Icon(
                               Icons.keyboard_arrow_down,
@@ -279,14 +284,76 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
                         ),
                       ],
                     ),
-                    const CircleAvatar(
-                      radius: 18,
-                      backgroundImage: AssetImage("assets/images/avatar.png"),
+                    PopupMenuButton<int>(
+                      iconSize: 40,
+                      icon: const CircleAvatar(
+                        radius: 18,
+                        backgroundImage: AssetImage("assets/images/avatar.png"),
+                      ),
+                      color: Colors.black87,
+                      onSelected: (value) {
+                        String title = "";
+                        String content = "";
+
+                        switch (value) {
+                          case 1:
+                            title = AppTexts.titleUserAgreement;
+                            content = AppTexts.userAgreement;
+                            break;
+                          case 2:
+                            title = AppTexts.titlePrivacyPolicy;
+                            content = AppTexts.privacyPolicy;
+                            break;
+                          case 3:
+                            title = AppTexts.titleAppVersion;
+                            content = AppTexts.appVersionInfo;
+                            break;
+                        }
+
+                        showDialog(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: Text(title),
+                            content: SingleChildScrollView(
+                              child: Text(content),
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: const Text("Đóng"),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                      itemBuilder: (context) => [
+                        const PopupMenuItem(
+                          value: 1,
+                          child: Text(
+                            "User Agreement",
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ),
+                        const PopupMenuItem(
+                          value: 2,
+                          child: Text(
+                            "Privacy Policy",
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ),
+                        const PopupMenuItem(
+                          value: 3,
+                          child: Text(
+                            "App Version",
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
 
-                const SizedBox(height: 30),
+                const SizedBox(height: 15),
 
                 // --- WEATHER ICON + STATUS ---
                 Text(
@@ -318,29 +385,73 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
 
                 const SizedBox(height: 20),
 
-                // --- WEEK FORECAST ---
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: indices.map((idx) {
-                    final dt = DateTime.tryParse(dailyTimes[idx]) ?? DateTime.now();
-                    final iconPath = _smallIconForCode(dailyCodes[idx] as int);
-                    final isSelected = idx == _selectedDateIndex;
+                SizedBox(
+                  height: 100,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: dailyTimes.length,
+                    itemBuilder: (context, idx) {
+                      final dt =
+                          DateTime.tryParse(dailyTimes[idx]) ?? DateTime.now();
+                      final iconPath = _smallIconForCode(
+                        dailyCodes[idx] as int,
+                      );
+                      final isSelected = idx == _selectedDateIndex;
 
-                    return GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _selectedDateIndex = idx;
-                        });
-                      },
-                      child: _DayWeather(
-                        day: _weekdayShort(dt),
-                        iconPath: iconPath,
-                        level: isSelected ? 0 : 2,
-                      ),
-                    );
-                  }).toList(),
+                      return GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _selectedDateIndex = idx;
+                          });
+                        },
+                        child: Container(
+                          width: 70,
+                          margin: const EdgeInsets.symmetric(horizontal: 6),
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          decoration: isSelected
+                              ? BoxDecoration(
+                                  color: Colors.white.withOpacity(0.3),
+                                  borderRadius: BorderRadius.circular(12),
+                                )
+                              : null,
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                _weekdayShort(dt),
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: isSelected ? 18 : 14,
+                                  fontWeight: isSelected
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              SvgPicture.asset(
+                                iconPath,
+                                width: isSelected ? 35 : 28,
+                                height: isSelected ? 35 : 28,
+                                colorFilter: const ColorFilter.mode(
+                                  Colors.white,
+                                  BlendMode.srcIn,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                "${(dailyMax[idx] as num).toInt()}° / ${(dailyMin[idx] as num).toInt()}°",
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: isSelected ? 14 : 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                 ),
-
                 const SizedBox(height: 10),
 
                 // --- HOURLY FORECAST ---
@@ -543,12 +654,18 @@ class _HourlyChartState extends State<HourlyChart> {
 
     final spots = List.generate(
       items.length,
-          (i) => FlSpot(i.toDouble(), (items[i]['temp'] as double)),
+      (i) => FlSpot(i.toDouble(), (items[i]['temp'] as double)),
     );
 
     final temps = items.map((e) => e['temp'] as double).toList();
-    final minY = (temps.reduce((a, b) => a < b ? a : b) - 3).clamp(-50.0, 100.0);
-    final maxY = (temps.reduce((a, b) => a > b ? a : b) + 3).clamp(-50.0, 100.0);
+    final minY = (temps.reduce((a, b) => a < b ? a : b) - 3).clamp(
+      -50.0,
+      100.0,
+    );
+    final maxY = (temps.reduce((a, b) => a > b ? a : b) + 3).clamp(
+      -50.0,
+      100.0,
+    );
 
     // giờ hiện tại
     final now = DateTime.now();
@@ -573,7 +690,9 @@ class _HourlyChartState extends State<HourlyChart> {
               return Stack(
                 children: [
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: sidePadding),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: sidePadding,
+                    ),
                     child: LineChart(
                       LineChartData(
                         gridData: const FlGridData(show: false),
@@ -600,7 +719,8 @@ class _HourlyChartState extends State<HourlyChart> {
                     final item = items[index];
                     final temp = item['temp'] as double;
                     final hourRaw = item['hour'] as String;
-                    final wind = "${(item['wind'] as double).toStringAsFixed(1)}km/h";
+                    final wind =
+                        "${(item['wind'] as double).toStringAsFixed(1)}km/h";
                     final code = item['code'] as int;
                     final smallIcon = widget.iconForCode(code);
 
@@ -622,13 +742,16 @@ class _HourlyChartState extends State<HourlyChart> {
                     }
 
                     final nowDt = DateTime.now();
-                    final isSameDay = parsed.year == nowDt.year &&
+                    final isSameDay =
+                        parsed.year == nowDt.year &&
                         parsed.month == nowDt.month &&
                         parsed.day == nowDt.day;
 
                     final isSameHour = parsed.hour == nowDt.hour;
 
-                    final displayHour = (isSameDay && isSameHour) ? "Now" : hourRaw;
+                    final displayHour = (isSameDay && isSameHour)
+                        ? "Now"
+                        : hourRaw;
 
                     final posX = sidePadding + index * spacing;
                     final relative = (temp - minY) / (maxY - minY);
