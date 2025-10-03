@@ -4,6 +4,10 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import '../constant/text.dart';
+import '../weather_effects/cloudy_effect.dart';
+import '../weather_effects/sunny_effect.dart';
+import '../weather_effects/rainy_effect.dart';
+import '../weather_effects/thunderstorm_effect.dart';
 
 class DetailWeatherPage extends StatefulWidget {
   final Map<String, dynamic> weatherData;
@@ -20,6 +24,7 @@ class DetailWeatherPage extends StatefulWidget {
 }
 
 class _DetailWeatherPage extends State<DetailWeatherPage> {
+
   // Danh sách location mẫu (bạn có thể thay bằng dữ liệu thật)
   final List<Map<String, dynamic>> _locations = [
     {'name': 'Bangkok', 'lat': 13.7563, 'lon': 100.5018, 'tz': 'Asia/Bangkok'},
@@ -113,9 +118,41 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
     return [51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 97].contains(code);
   }
 
+// ✅ Getter tự tính todayCode dựa trên dữ liệu
+  int get _todayCode {
+    final daily = (widget.weatherData['daily'] ?? {}) as Map<String, dynamic>;
+    final hourly = (widget.weatherData['hourly'] ?? {}) as Map<String, dynamic>;
+
+    final dailyCodes = List<dynamic>.from(daily['weathercode'] ?? []);
+    final hourlyCodes = (hourly['weathercode'] as List? ?? [])
+        .map((e) => (e as num).toInt())
+        .toList();
+
+    if (dailyCodes.isNotEmpty) {
+      return dailyCodes[_selectedDateIndex] as int;
+    } else if (hourlyCodes.isNotEmpty) {
+      return hourlyCodes[0];
+    } else {
+      return 3; // fallback
+    }
+  }
+
+// ✅ Các getter trạng thái animation
+  bool get isSunny => _todayCode == 0;
+
+  bool get isPartlyCloudy => [1, 2].contains(_todayCode);
+
+  bool get isCloudy => _todayCode == 3;
+
+  bool get isRainy =>
+      [51, 53, 55, 61, 63, 65, 80, 81, 82].contains(_todayCode);
+
+  bool get isThunderStorm =>
+      [95, 96, 99].contains(_todayCode);
   @override
   Widget build(BuildContext context) {
-    // safety checks
+
+    // safety checks, chia weather data nhận được thành các List để sử dụng
     final daily = (widget.weatherData['daily'] ?? {}) as Map<String, dynamic>;
     final hourly = (widget.weatherData['hourly'] ?? {}) as Map<String, dynamic>;
 
@@ -374,335 +411,353 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
       );
     }
 
+
+
     return Scaffold(
       backgroundColor: isRainySelectedDay ? null : const Color(0xFFD59A2F),
-      body: AnimatedContainer(
-        duration: const Duration(milliseconds: 500),
-        curve: Curves.easeInOut,
-        width: double.infinity,
-        height: double.infinity,
-        decoration: isRainySelectedDay
-            ? const BoxDecoration(
-                image: DecorationImage(
-                  image: AssetImage("assets/images/bg_rainy.png"),
-                  fit: BoxFit.cover,
-                ),
-              )
-            : const BoxDecoration(color: Color(0xFFD59A2F)),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              children: [
-                // --- TOP BAR ---
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.location_on, color: Colors.white),
-                        const SizedBox(width: 4),
-                        DropdownButtonHideUnderline(
-                          child: DropdownButton<Map<String, dynamic>>(
-                            dropdownColor: Colors.black87,
-                            elevation: 0, // loại bỏ bóng
-                            value: _selectedLocation,
-                            icon: const Icon(
-                              Icons.keyboard_arrow_down,
-                              color: Colors.white,
-                            ),
-                            items: _locations.map((loc) {
-                              return DropdownMenuItem<Map<String, dynamic>>(
-                                value: loc,
-                                child: Text(
-                                  loc['name'],
-                                  style: const TextStyle(
-                                    fontFamily: 'Inter',
-                                    fontSize: 18,
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              );
-                            }).toList(),
-                            onChanged: (val) {
-                              if (val == null) return;
-                              setState(() {
-                                _selectedLocation = val;
-                              });
-                              widget.onLocationChange(
-                                val['lat'],
-                                val['lon'],
-                                val['tz'],
-                              );
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                    PopupMenuButton<int>(
-                      iconSize: 40,
-                      icon: const CircleAvatar(
-                        radius: 18,
-                        backgroundImage: AssetImage("assets/images/avatar.png"),
-                      ),
-                      color: Colors.black87,
-                      onSelected: (value) {
-                        String title = "";
-                        String content = "";
-
-                        switch (value) {
-                          case 1:
-                            title = AppTexts.titleUserAgreement;
-                            content = AppTexts.userAgreement;
-                            break;
-                          case 2:
-                            title = AppTexts.titlePrivacyPolicy;
-                            content = AppTexts.privacyPolicy;
-                            break;
-                          case 3:
-                            title = AppTexts.titleAppVersion;
-                            content = AppTexts.appVersionInfo;
-                            break;
-                        }
-
-                        showDialog(
-                          context: context,
-                          builder: (context) => AlertDialog(
-                            title: Text(title),
-                            content: SingleChildScrollView(
-                              child: Text(content),
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context),
-                                child: const Text("Close"),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                      itemBuilder: (context) => [
-                        const PopupMenuItem(
-                          value: 1,
-                          child: Text(
-                            "User Agreement",
-                            style: TextStyle(color: Colors.white),
-                          ),
-                        ),
-                        const PopupMenuItem(
-                          value: 2,
-                          child: Text(
-                            "Privacy Policy",
-                            style: TextStyle(color: Colors.white),
-                          ),
-                        ),
-                        const PopupMenuItem(
-                          value: 3,
-                          child: Text(
-                            "App Version",
-                            style: TextStyle(color: Colors.white),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 15),
-
-                // --- WEATHER ICON + STATUS ---
-                Text(
-                  _mapWeatherText(todayCode),
-                  style: const TextStyle(fontSize: 24, color: Colors.white),
-                ),
-                const SizedBox(height: 8),
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 400),
-                  transitionBuilder: (child, anim) =>
-                      FadeTransition(opacity: anim, child: child),
-                  child: SvgPicture.asset(
-                    _bigIconForCode(todayCode),
-                    key: ValueKey(todayCode),
-                    width: 200,
-                    height: 200,
-                    colorFilter: const ColorFilter.mode(
-                      Colors.white,
-                      BlendMode.srcIn,
-                    ),
+      body: Stack(
+        children:[
+          AnimatedContainer(
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeInOut,
+          width: double.infinity,
+          height: double.infinity,
+          decoration: isRainySelectedDay
+              ? const BoxDecoration(
+                  image: DecorationImage(
+                    image: AssetImage("assets/images/bg_rainy.png"),
+                    fit: BoxFit.cover,
                   ),
-                ),
-                Text(
-                  "${todayMax.toInt()}°C",
-                  style: const TextStyle(
-                    fontSize: 64,
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  todayDate,
-                  style: const TextStyle(fontSize: 16, color: Colors.white),
-                ),
+                )
+              : const BoxDecoration(color: Color(0xFFD59A2F)),
 
-                const SizedBox(height: 20),
-
-                SizedBox(
-                  height: 100,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: dailyTimes.length,
-                    itemBuilder: (context, idx) {
-                      final dt =
-                          DateTime.tryParse(dailyTimes[idx]) ?? DateTime.now();
-                      final iconPath = _smallIconForCode(
-                        dailyCodes[idx] as int,
-                      );
-                      final isSelected = idx == _selectedDateIndex;
-
-                      return GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _selectedDateIndex = idx;
-                          });
-                        },
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 300),
-                          curve: Curves.easeInOut,
-                          width: 70,
-                          margin: const EdgeInsets.symmetric(horizontal: 6),
-                          padding: const EdgeInsets.symmetric(vertical: 4),
-                          decoration: isSelected
-                              ? BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.3),
-                                  borderRadius: BorderRadius.circular(12),
-                                )
-                              : null,
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              AnimatedDefaultTextStyle(
-                                duration: const Duration(milliseconds: 300),
-                                style: TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: isSelected ? 18 : 14,
-                                  fontWeight: isSelected
-                                      ? FontWeight.bold
-                                      : FontWeight.normal,
-                                ),
-                                child: Text(_weekdayShort(dt)),
-                              ),
-                              const SizedBox(height: 6),
-                              AnimatedScale(
-                                scale: isSelected ? 1.2 : 1.0,
-                                duration: const Duration(milliseconds: 300),
-                                curve: Curves.easeInOut,
-                                child: SvgPicture.asset(
-                                  iconPath,
-                                  width: 28,
-                                  height: 28,
-                                  colorFilter: const ColorFilter.mode(
-                                    Colors.white,
-                                    BlendMode.srcIn,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                "${(dailyMax[idx] as num).toInt()}° / ${(dailyMin[idx] as num).toInt()}°",
-                                style: TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: isSelected ? 14 : 12,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(height: 10),
-
-                // --- HOURLY FORECAST ---
-                Container(
-                  width: double.infinity,
-                  margin: const EdgeInsets.only(top: 5),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+        ),
+          // ✅ HIỆU ỨNG TRÊN NỀN
+          if (isSunny) const SunnyEffect(),
+          if (isCloudy || isPartlyCloudy) const CloudyEffect(),
+          if (isRainy) const RainyEffect(),
+          if (isThunderStorm) ...[
+            const RainyEffect(),
+            const ThunderStormEffect(),
+          ],
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                children: [
+                  // --- TOP BAR ---
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // label
                       Row(
                         children: [
-                          SvgPicture.asset(
-                            "assets/icons/clock.svg",
-                            width: 16,
-                            height: 16,
-                            colorFilter: const ColorFilter.mode(
-                              Colors.white,
-                              BlendMode.srcIn,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          const Text(
-                            "24-hour forecast",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
+                          const Icon(Icons.location_on, color: Colors.white),
+                          const SizedBox(width: 4),
+                          DropdownButtonHideUnderline(
+                            child: DropdownButton<Map<String, dynamic>>(
+                              dropdownColor: Colors.black87,
+                              elevation: 0, // loại bỏ bóng
+                              value: _selectedLocation,
+                              icon: const Icon(
+                                Icons.keyboard_arrow_down,
+                                color: Colors.white,
+                              ),
+                              items: _locations.map((loc) {
+                                return DropdownMenuItem<Map<String, dynamic>>(
+                                  value: loc,
+                                  child: Text(
+                                    loc['name'],
+                                    style: const TextStyle(
+                                      fontFamily: 'Inter',
+                                      fontSize: 18,
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: (val) {
+                                if (val == null) return;
+                                setState(() {
+                                  _selectedLocation = val;
+                                });
+                                widget.onLocationChange(
+                                  val['lat'],
+                                  val['lon'],
+                                  val['tz'],
+                                );
+                              },
                             ),
                           ),
                         ],
                       ),
-                      HourlyChart(
-                        items: hourlyPoints,
-                        iconForCode: _smallIconForCode,
-                      ),
-                      const SizedBox(height: 10),
-
-                      Center(
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.amber,
-                            shadowColor: Colors.transparent,
-                            shape: const RoundedRectangleBorder(
-                              borderRadius: BorderRadius.all(
-                                Radius.circular(20),
-                              ),
-                            ),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 60,
-                              vertical: 12,
-                            ),
-                          ),
-                          onPressed: () {
-                            showIncidentReportDialog(context);
-                          },
-                          child: const Text(
-                            "Incident Report",
-                            style: TextStyle(
-                              color: Colors.black87,
-                              fontSize: 12,
-                            ),
-                          ),
+                      PopupMenuButton<int>(
+                        iconSize: 40,
+                        icon: const CircleAvatar(
+                          radius: 18,
+                          backgroundImage: AssetImage("assets/images/avatar.png"),
                         ),
+                        color: Colors.black87,
+                        onSelected: (value) {
+                          String title = "";
+                          String content = "";
+
+                          switch (value) {
+                            case 1:
+                              title = AppTexts.titleUserAgreement;
+                              content = AppTexts.userAgreement;
+                              break;
+                            case 2:
+                              title = AppTexts.titlePrivacyPolicy;
+                              content = AppTexts.privacyPolicy;
+                              break;
+                            case 3:
+                              title = AppTexts.titleAppVersion;
+                              content = AppTexts.appVersionInfo;
+                              break;
+                          }
+
+                          showDialog(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              title: Text(title),
+                              content: SingleChildScrollView(
+                                child: Text(content),
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  child: const Text("Close"),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                        itemBuilder: (context) => [
+                          const PopupMenuItem(
+                            value: 1,
+                            child: Text(
+                              "User Agreement",
+                              style: TextStyle(color: Colors.white),
+                            ),
+                          ),
+                          const PopupMenuItem(
+                            value: 2,
+                            child: Text(
+                              "Privacy Policy",
+                              style: TextStyle(color: Colors.white),
+                            ),
+                          ),
+                          const PopupMenuItem(
+                            value: 3,
+                            child: Text(
+                              "App Version",
+                              style: TextStyle(color: Colors.white),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ),
-              ],
+
+                  const SizedBox(height: 15),
+
+                  // --- WEATHER ICON + STATUS ---
+                  Text(
+                    _mapWeatherText(todayCode),
+                    style: const TextStyle(fontSize: 24, color: Colors.white),
+                  ),
+                  const SizedBox(height: 8),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 400),
+                    transitionBuilder: (child, anim) =>
+                        FadeTransition(opacity: anim, child: child),
+                    child: SvgPicture.asset(
+                      _bigIconForCode(todayCode),
+                      key: ValueKey(todayCode),
+                      width: 200,
+                      height: 200,
+                      colorFilter: const ColorFilter.mode(
+                        Colors.white,
+                        BlendMode.srcIn,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    "${todayMax.toInt()}°C",
+                    style: const TextStyle(
+                      fontSize: 64,
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    todayDate,
+                    style: const TextStyle(fontSize: 16, color: Colors.white),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  SizedBox(
+                    height: 100,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: dailyTimes.length,
+                      itemBuilder: (context, idx) {
+                        final dt =
+                            DateTime.tryParse(dailyTimes[idx]) ?? DateTime.now();
+                        final iconPath = _smallIconForCode(
+                          dailyCodes[idx] as int,
+                        );
+                        final isSelected = idx == _selectedDateIndex;
+
+                        return GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _selectedDateIndex = idx;
+                            });
+                          },
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 300),
+                            curve: Curves.easeInOut,
+                            width: 70,
+                            margin: const EdgeInsets.symmetric(horizontal: 6),
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            decoration: isSelected
+                                ? BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.3),
+                              borderRadius: BorderRadius.circular(12),
+                            )
+                                : null,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                AnimatedDefaultTextStyle(
+                                  duration: const Duration(milliseconds: 300),
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: isSelected ? 18 : 14,
+                                    fontWeight: isSelected
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
+                                  ),
+                                  child: Text(_weekdayShort(dt)),
+                                ),
+                                const SizedBox(height: 6),
+                                AnimatedScale(
+                                  scale: isSelected ? 1.2 : 1.0,
+                                  duration: const Duration(milliseconds: 300),
+                                  curve: Curves.easeInOut,
+                                  child: SvgPicture.asset(
+                                    iconPath,
+                                    width: 28,
+                                    height: 28,
+                                    colorFilter: const ColorFilter.mode(
+                                      Colors.white,
+                                      BlendMode.srcIn,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  "${(dailyMax[idx] as num).toInt()}° / ${(dailyMin[idx] as num).toInt()}°",
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: isSelected ? 14 : 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+
+                  // --- HOURLY FORECAST ---
+                  Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.only(top: 5),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // label
+                        Row(
+                          children: [
+                            SvgPicture.asset(
+                              "assets/icons/clock.svg",
+                              width: 16,
+                              height: 16,
+                              colorFilter: const ColorFilter.mode(
+                                Colors.white,
+                                BlendMode.srcIn,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            const Text(
+                              "24-hour forecast",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                        HourlyChart(
+                          items: hourlyPoints,
+                          iconForCode: _smallIconForCode,
+                        ),
+                        const SizedBox(height: 10),
+
+                        Center(
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.amber,
+                              shadowColor: Colors.transparent,
+                              shape: const RoundedRectangleBorder(
+                                borderRadius: BorderRadius.all(
+                                  Radius.circular(20),
+                                ),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 60,
+                                vertical: 12,
+                              ),
+                            ),
+                            onPressed: () {
+                              showIncidentReportDialog(context);
+                            },
+                            child: const Text(
+                              "Incident Report",
+                              style: TextStyle(
+                                color: Colors.black87,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
+      ],
       ),
     );
   }
 }
+
+
+
 
 class HourlyChart extends StatefulWidget {
   final List<Map<String, dynamic>> items;
