@@ -211,6 +211,7 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
 
       showDialog(
         context: context,
+
         builder: (context) {
           return StatefulBuilder(
             builder: (context, setState) {
@@ -375,7 +376,9 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
 
     return Scaffold(
       backgroundColor: isRainySelectedDay ? null : const Color(0xFFD59A2F),
-      body: Container(
+      body: AnimatedContainer(
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeInOut,
         width: double.infinity,
         height: double.infinity,
         decoration: isRainySelectedDay
@@ -385,7 +388,7 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
                   fit: BoxFit.cover,
                 ),
               )
-            : null,
+            : const BoxDecoration(color: Color(0xFFD59A2F)),
         child: SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(16.0),
@@ -514,13 +517,19 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
                   style: const TextStyle(fontSize: 24, color: Colors.white),
                 ),
                 const SizedBox(height: 8),
-                SvgPicture.asset(
-                  _bigIconForCode(todayCode),
-                  width: 200,
-                  height: 200,
-                  colorFilter: const ColorFilter.mode(
-                    Colors.white,
-                    BlendMode.srcIn,
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 400),
+                  transitionBuilder: (child, anim) =>
+                      FadeTransition(opacity: anim, child: child),
+                  child: SvgPicture.asset(
+                    _bigIconForCode(todayCode),
+                    key: ValueKey(todayCode),
+                    width: 200,
+                    height: 200,
+                    colorFilter: const ColorFilter.mode(
+                      Colors.white,
+                      BlendMode.srcIn,
+                    ),
                   ),
                 ),
                 Text(
@@ -557,7 +566,9 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
                             _selectedDateIndex = idx;
                           });
                         },
-                        child: Container(
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeInOut,
                           width: 70,
                           margin: const EdgeInsets.symmetric(horizontal: 6),
                           padding: const EdgeInsets.symmetric(vertical: 4),
@@ -570,8 +581,8 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Text(
-                                _weekdayShort(dt),
+                              AnimatedDefaultTextStyle(
+                                duration: const Duration(milliseconds: 300),
                                 style: TextStyle(
                                   color: Colors.white70,
                                   fontSize: isSelected ? 18 : 14,
@@ -579,15 +590,21 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
                                       ? FontWeight.bold
                                       : FontWeight.normal,
                                 ),
+                                child: Text(_weekdayShort(dt)),
                               ),
                               const SizedBox(height: 6),
-                              SvgPicture.asset(
-                                iconPath,
-                                width: isSelected ? 35 : 28,
-                                height: isSelected ? 35 : 28,
-                                colorFilter: const ColorFilter.mode(
-                                  Colors.white,
-                                  BlendMode.srcIn,
+                              AnimatedScale(
+                                scale: isSelected ? 1.2 : 1.0,
+                                duration: const Duration(milliseconds: 300),
+                                curve: Curves.easeInOut,
+                                child: SvgPicture.asset(
+                                  iconPath,
+                                  width: 28,
+                                  height: 28,
+                                  colorFilter: const ColorFilter.mode(
+                                    Colors.white,
+                                    BlendMode.srcIn,
+                                  ),
                                 ),
                               ),
                               const SizedBox(height: 4),
