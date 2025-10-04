@@ -1,5 +1,4 @@
 // lib/pages/weather_page.dart
-
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -7,7 +6,6 @@ import '../pages/detail_weather_page.dart';
 
 class WeatherPage extends StatefulWidget {
   const WeatherPage({super.key});
-
   @override
   State<WeatherPage> createState() => _WeatherPageState();
 }
@@ -21,7 +19,6 @@ class _WeatherPageState extends State<WeatherPage> {
   double latitude = 21.0285;
   double longitude = 105.8542;
   String timezone = 'Asia/Bangkok';
-
   @override
   void initState() {
     super.initState();
@@ -38,16 +35,12 @@ class _WeatherPageState extends State<WeatherPage> {
     fetchWeather();
   }
 
-
-
-
   // fetch dữ liệu
   Future<void> fetchWeather() async {
     setState(() {
       _loading = true;
       _error = null;
     });
-
     try {
       final uri = Uri.parse(
         'https://api.open-meteo.com/v1/forecast'
@@ -56,9 +49,7 @@ class _WeatherPageState extends State<WeatherPage> {
         '&daily=temperature_2m_max,temperature_2m_min,weathercode'
         '&timezone=$timezone',
       );
-
       final res = await http.get(uri);
-
       if (res.statusCode == 200) {
         final Map<String, dynamic> data = json.decode(res.body);
         if (mounted) {
@@ -84,29 +75,11 @@ class _WeatherPageState extends State<WeatherPage> {
     }
   }
 
-  int? _extractTodayWeatherCode(Map<String, dynamic> data) {
-    try {
-      final daily = data['daily'] as Map<String, dynamic>?;
-      final List<dynamic>? dailyCodes = daily?['weathercode'];
-      if (dailyCodes != null && dailyCodes.isNotEmpty) {
-        return (dailyCodes[0] as num).toInt();
-      }
-
-      final hourly = data['hourly'] as Map<String, dynamic>?;
-      final List<dynamic>? hourlyCodes = hourly?['weathercode'];
-      if (hourlyCodes != null && hourlyCodes.isNotEmpty) {
-        return (hourlyCodes[0] as num).toInt();
-      }
-    } catch (_) {}
-    return null;
-  }
-
   @override
   Widget build(BuildContext context) {
     if (_loading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
-
     if (_error != null) {
       return Scaffold(
         appBar: AppBar(title: const Text('Weather')),
@@ -132,14 +105,11 @@ class _WeatherPageState extends State<WeatherPage> {
         ),
       );
     }
-
     if (weatherData == null) {
       return const Scaffold(
         body: Center(child: Text('Không có dữ liệu thời tiết')),
       );
     }
-
-    final int? todayCode = _extractTodayWeatherCode(weatherData!);
     return DetailWeatherPage(
       weatherData: weatherData!,
       onLocationChange: updateLocation,

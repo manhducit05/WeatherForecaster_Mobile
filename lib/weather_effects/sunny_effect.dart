@@ -53,7 +53,6 @@ class _SunlightEffectState extends State<SunnyEffect>
     super.dispose();
   }
 }
-
 class SunPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {

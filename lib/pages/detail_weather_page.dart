@@ -410,9 +410,6 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
         },
       );
     }
-
-
-
     return Scaffold(
       backgroundColor: isRainySelectedDay ? null : const Color(0xFFD59A2F),
       body: Stack(
@@ -430,7 +427,6 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
                   ),
                 )
               : const BoxDecoration(color: Color(0xFFD59A2F)),
-
         ),
           // ✅ HIỆU ỨNG TRÊN NỀN
           if (isSunny) const SunnyEffect(),
@@ -559,7 +555,6 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
                       ),
                     ],
                   ),
-
                   const SizedBox(height: 15),
 
                   // --- WEATHER ICON + STATUS ---
@@ -755,9 +750,6 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
     );
   }
 }
-
-
-
 
 class HourlyChart extends StatefulWidget {
   final List<Map<String, dynamic>> items;

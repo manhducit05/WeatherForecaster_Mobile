@@ -69,11 +69,11 @@ class _CloudyEffectState extends State<CloudyEffect>
   }
 
 // Hàm dựng mây tái sử dụng
-  Widget _cloud({double size = 220, double opacity = 0.8}) {
+  Widget _cloud({double size = 400, double opacity = 0.8}) {
     return Opacity(
       opacity: opacity,
       child: Image.asset(
-        "assets/images/cloudy_effect.png",
+        "assets/images/cloud-effect.png",
         width: size,
       ),
     );
