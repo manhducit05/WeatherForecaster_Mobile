@@ -46,6 +46,17 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
       'tz': 'America/Los_Angeles',
     },
   ];
+  int get _utcOffsetSeconds {
+    return widget.weatherData['utc_offset_seconds'] ?? 0;
+  }
+
+  // Hàm mới để lấy DateTime hiện tại của thành phố được chọn
+  DateTime _getCurrentCityTime() {
+    final nowUtc = DateTime.now().toUtc();
+    // Áp dụng độ lệch UTC từ API (vd: 3600 cho London)
+    return nowUtc.add(Duration(seconds: _utcOffsetSeconds));
+  }
+
   @override
   void initState() {
     super.initState();
@@ -570,7 +581,7 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
             CloudWidget(
               cloudConfig: CloudConfig(
                 size: 350,
-                color: Colors.white.withOpacity(0.25),
+                color: Colors.white.withValues(alpha: 0.25),
                 icon: Icons.cloud,
                 x: -50,
                 y: 100,
@@ -582,7 +593,7 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
             CloudWidget(
               cloudConfig: CloudConfig(
                 size: 400,
-                color: Colors.grey.withOpacity(0.20),
+                color: Colors.grey.withValues(alpha: 0.20),
                 icon: Icons.cloud,
                 x: 50,
                 y: 150,
@@ -594,7 +605,7 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
             CloudWidget(
               cloudConfig: CloudConfig(
                 size: 320,
-                color: Colors.white.withOpacity(0.18),
+                color: Colors.white.withValues(alpha: 0.18),
                 icon: Icons.cloud,
                 x: 0,
                 y: 30,
@@ -954,6 +965,8 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
                         HourlyChart(
                           items: hourlyPoints,
                           iconForCode: _smallIconForCode,
+                          getCurrentTime:
+                              _getCurrentCityTime, // ✅ truyền hàm xuống
                         ),
                         const SizedBox(height: 10),
 
@@ -1000,11 +1013,13 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
 class HourlyChart extends StatefulWidget {
   final List<Map<String, dynamic>> items;
   final String Function(int) iconForCode;
+  final DateTime Function() getCurrentTime; // ✅ nhận hàm
 
   const HourlyChart({
     super.key,
     required this.items,
     required this.iconForCode,
+    required this.getCurrentTime,
   });
 
   @override
@@ -1022,7 +1037,7 @@ class _HourlyChartState extends State<HourlyChart> {
 
   void _scrollToNow() {
     // tìm giờ hiện tại
-    final now = DateTime.now();
+    final now = widget.getCurrentTime();
     final nowHour = now.hour.toString().padLeft(2, '0');
 
     // tìm index trong items
@@ -1145,14 +1160,18 @@ class _HourlyChartState extends State<HourlyChart> {
                       );
                     }
 
-                    final nowDt = DateTime.now();
+                    // ✅ Lấy giờ hiện tại theo thành phố
+                    final nowCity = widget.getCurrentTime();
+
+                    // ✅ So sánh parsed với giờ địa phương của thành phố
                     final isSameDay =
-                        parsed.year == nowDt.year &&
-                        parsed.month == nowDt.month &&
-                        parsed.day == nowDt.day;
+                        parsed.year == nowCity.year &&
+                        parsed.month == nowCity.month &&
+                        parsed.day == nowCity.day;
 
-                    final isSameHour = parsed.hour == nowDt.hour;
+                    final isSameHour = parsed.hour == nowCity.hour;
 
+                    // ✅ Nếu khớp thì hiển thị "Now"
                     final displayHour = (isSameDay && isSameHour)
                         ? "Now"
                         : hourRaw;
