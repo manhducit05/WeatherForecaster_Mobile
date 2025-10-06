@@ -1,7 +1,15 @@
 import 'package:flutter/material.dart';
 import 'routes/app_routes.dart';
+import 'package:flutter/services.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Chỉ cho phép dọc (portraitUp và portraitDown)
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
   runApp(const MyApp());
 }
 
