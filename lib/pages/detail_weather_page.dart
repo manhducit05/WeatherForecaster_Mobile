@@ -139,7 +139,7 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
   bool get isPartlyCloudy => [1, 2].contains(_todayCode);
 
   bool get isCloudy => _todayCode == 3;
-
+  bool get isFoggy => [45, 48].contains(_todayCode);
   bool get isRainy => [51, 53, 55, 61, 63, 65, 80, 81, 82].contains(_todayCode);
 
   bool get isThunderStorm => [95, 96, 99].contains(_todayCode);
@@ -431,22 +431,22 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
                 blurStyle: BlurStyle.solid,
                 isLeftLocation: true,
                 coreColor: Color.fromARGB(
-                  255,   // alpha = 1.0  → 255
-                  245,   // red   = 0.9608 → ~245
-                  124,   // green = 0.4863 → ~124
-                  0,     // blue  = 0.0000 → 0
+                  255, // alpha = 1.0  → 255
+                  245, // red   = 0.9608 → ~245
+                  124, // green = 0.4863 → ~124
+                  0, // blue  = 0.0000 → 0
                 ),
                 midColor: Color.fromARGB(
-                  255,   // alpha
-                  255,   // red   = 1.0000
-                  238,   // green = 0.9333 → ~238
-                  88,    // blue  = 0.3451 → ~88
+                  255, // alpha
+                  255, // red   = 1.0000
+                  238, // green = 0.9333 → ~238
+                  88, // blue  = 0.3451 → ~88
                 ),
                 outColor: Color.fromARGB(
-                  255,   // alpha
-                  255,   // red   = 1.0000
-                  167,   // green = 0.6549 → ~167
-                  38,    // blue  = 0.1490 → ~38
+                  255, // alpha
+                  255, // red   = 1.0000
+                  167, // green = 0.6549 → ~167
+                  38, // blue  = 0.1490 → ~38
                 ),
                 animMidMill: 1500,
                 animOutMill: 1500,
@@ -461,7 +461,12 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
                 y: 208,
                 windGap: 10,
                 blurSigma: 6,
-                color: const Color.fromARGB(255, 96, 125, 139), // 0.3765, 0.4902, 0.5451
+                color: const Color.fromARGB(
+                  255,
+                  96,
+                  125,
+                  139,
+                ), // 0.3765, 0.4902, 0.5451
                 slideXStart: 0,
                 slideXEnd: 350,
                 pauseStartMill: 50,
@@ -476,7 +481,12 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
                 count: 40,
                 lengthDrop: 13,
                 widthDrop: 4,
-                color: const Color.fromARGB(153, 120, 144, 156), // 0.6000, 0.4706, 0.5647, 0.6118
+                color: const Color.fromARGB(
+                  153,
+                  120,
+                  144,
+                  156,
+                ), // 0.6000, 0.4706, 0.5647, 0.6118
                 isRoundedEndsDrop: true,
                 widgetRainDrop: null,
                 fallRangeMinDurMill: 500,
@@ -499,15 +509,17 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
                 thunderWidth: 11,
                 blurSigma: 28,
                 blurStyle: BlurStyle.solid,
-                color: const Color.fromARGB(153, 255, 238, 88), // 0.6000, 1.0000, 0.9333, 0.3451
+                color: const Color.fromARGB(
+                  153,
+                  255,
+                  238,
+                  88,
+                ), // 0.6000, 1.0000, 0.9333, 0.3451
                 flashStartMill: 50,
                 flashEndMill: 300,
                 pauseStartMill: 50,
                 pauseEndMill: 6000,
-                points: const [
-                  Offset(110.0, 210.0),
-                  Offset(120.0, 240.0),
-                ],
+                points: const [Offset(110.0, 210.0), Offset(120.0, 240.0)],
               ),
             ),
 
@@ -526,16 +538,18 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
                 blurStyle: BlurStyle.solid,
               ),
             ),
-
-          ]
-
-          else if (isRainy) ...[
+          ] else if (isRainy) ...[
             RainWidget(
               rainConfig: RainConfig(
                 count: 25,
                 lengthDrop: 13,
                 widthDrop: 4,
-                color: const Color.fromARGB(255, 158, 158, 158), // 1.0, 0.6196, 0.6196, 0.6196
+                color: const Color.fromARGB(
+                  255,
+                  158,
+                  158,
+                  158,
+                ), // 1.0, 0.6196, 0.6196, 0.6196
                 isRoundedEndsDrop: true,
                 widgetRainDrop: null,
                 fallRangeMinDurMill: 500,
@@ -552,57 +566,118 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
                 fadeCurve: const Cubic(0.95, 0.05, 0.80, 0.04),
               ),
             ),
-          ]
-          else if (isCloudy || isPartlyCloudy) ...[
-              SunWidget(
-                sunConfig: SunConfig(
-                  width: 300,
-                  blurSigma: 8,
-                  blurStyle: BlurStyle.solid,
-                  isLeftLocation: true,
-                  coreColor: const Color.fromARGB(255, 255, 183, 77),   // 1.0, 1.0, 0.7176, 0.3020
-                  midColor: const Color.fromARGB(255, 255, 255, 141),   // 1.0, 1.0, 1.0, 0.5529
-                  outColor: const Color.fromARGB(255, 255, 209, 128),   // 1.0, 1.0, 0.8196, 0.5020
-                  animMidMill: 2000,
-                  animOutMill: 2000,
-                ),
+          ] else if (isFoggy) ...[
+            CloudWidget(
+              cloudConfig: CloudConfig(
+                size: 350,
+                color: Colors.white.withOpacity(0.25),
+                icon: Icons.cloud,
+                x: -50,
+                y: 100,
+                slideX: 30,
+                slideY: 0,
+                slideDurMill: 9000,
               ),
+            ),
+            CloudWidget(
+              cloudConfig: CloudConfig(
+                size: 400,
+                color: Colors.grey.withOpacity(0.20),
+                icon: Icons.cloud,
+                x: 50,
+                y: 150,
+                slideX: -30,
+                slideY: 0,
+                slideDurMill: 10000,
+              ),
+            ),
+            CloudWidget(
+              cloudConfig: CloudConfig(
+                size: 320,
+                color: Colors.white.withOpacity(0.18),
+                icon: Icons.cloud,
+                x: 0,
+                y: 30,
+                slideX: 20,
+                slideY: 0,
+                slideDurMill: 12000,
+              ),
+            ),
+          ] else if (isCloudy || isPartlyCloudy) ...[
+            SunWidget(
+              sunConfig: SunConfig(
+                width: 300,
+                blurSigma: 8,
+                blurStyle: BlurStyle.solid,
+                isLeftLocation: true,
+                coreColor: const Color.fromARGB(
+                  255,
+                  255,
+                  183,
+                  77,
+                ), // 1.0, 1.0, 0.7176, 0.3020
+                midColor: const Color.fromARGB(
+                  255,
+                  255,
+                  255,
+                  141,
+                ), // 1.0, 1.0, 1.0, 0.5529
+                outColor: const Color.fromARGB(
+                  255,
+                  255,
+                  209,
+                  128,
+                ), // 1.0, 1.0, 0.8196, 0.5020
+                animMidMill: 2000,
+                animOutMill: 2000,
+              ),
+            ),
 
-              CloudWidget(
-                cloudConfig: CloudConfig(
-                  size: 250,
-                  color: const Color.fromARGB(168, 250, 250, 250), // 0.6588, 0.9804, 0.9804, 0.9804
-                  icon: const IconData(63056, fontFamily: 'MaterialIcons'),
-                  widgetCloud: null,
-                  x: 20,
-                  y: 3,
-                  scaleBegin: 1,
-                  scaleEnd: 1.08,
-                  scaleCurve: const Cubic(0.40, 0.00, 0.20, 1.00),
-                  slideX: 20,
-                  slideY: 0,
-                  slideDurMill: 3000,
-                  slideCurve: const Cubic(0.40, 0.00, 0.20, 1.00),
-                ),
+            CloudWidget(
+              cloudConfig: CloudConfig(
+                size: 250,
+                color: const Color.fromARGB(
+                  168,
+                  250,
+                  250,
+                  250,
+                ), // 0.6588, 0.9804, 0.9804, 0.9804
+                icon: const IconData(63056, fontFamily: 'MaterialIcons'),
+                widgetCloud: null,
+                x: 20,
+                y: 3,
+                scaleBegin: 1,
+                scaleEnd: 1.08,
+                scaleCurve: const Cubic(0.40, 0.00, 0.20, 1.00),
+                slideX: 20,
+                slideY: 0,
+                slideDurMill: 3000,
+                slideCurve: const Cubic(0.40, 0.00, 0.20, 1.00),
               ),
+            ),
 
-              CloudWidget(
-                cloudConfig: CloudConfig(
-                  size: 160,
-                  color: const Color.fromARGB(168, 250, 250, 250), // 0.6588, 0.9804, 0.9804, 0.9804
-                  icon: const IconData(63056, fontFamily: 'MaterialIcons'),
-                  widgetCloud: null,
-                  x: 140,
-                  y: 97,
-                  scaleBegin: 1,
-                  scaleEnd: 1.1,
-                  scaleCurve: const Cubic(0.40, 0.00, 0.20, 1.00),
-                  slideX: 20,
-                  slideY: 4,
-                  slideDurMill: 2000,
-                  slideCurve: const Cubic(0.40, 0.00, 0.20, 1.00),
-                ),
+            CloudWidget(
+              cloudConfig: CloudConfig(
+                size: 160,
+                color: const Color.fromARGB(
+                  168,
+                  250,
+                  250,
+                  250,
+                ), // 0.6588, 0.9804, 0.9804, 0.9804
+                icon: const IconData(63056, fontFamily: 'MaterialIcons'),
+                widgetCloud: null,
+                x: 140,
+                y: 97,
+                scaleBegin: 1,
+                scaleEnd: 1.1,
+                scaleCurve: const Cubic(0.40, 0.00, 0.20, 1.00),
+                slideX: 20,
+                slideY: 4,
+                slideDurMill: 2000,
+                slideCurve: const Cubic(0.40, 0.00, 0.20, 1.00),
               ),
+            ),
           ],
           SafeArea(
             child: Padding(
