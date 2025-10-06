@@ -5,10 +5,10 @@ class ThunderStormEffect extends StatefulWidget {
   const ThunderStormEffect({super.key});
 
   @override
-  _ThunderEffectState createState() => _ThunderEffectState();
+  ThunderEffectState createState() => ThunderEffectState();
 }
 
-class _ThunderEffectState extends State<ThunderStormEffect>
+class ThunderEffectState extends State<ThunderStormEffect>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _flash;
@@ -62,7 +62,7 @@ class _ThunderEffectState extends State<ThunderStormEffect>
         duration: const Duration(milliseconds: 50),
         opacity: _currentOpacity,
         child: Container(
-          color: Colors.white.withOpacity(0.8),
+          color: Colors.white.withValues(alpha: 0.8),
         ),
       ),
     );

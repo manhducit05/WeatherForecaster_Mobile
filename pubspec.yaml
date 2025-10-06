@@ -33,7 +33,10 @@ dependencies:
   flutter_svg: ^2.0.9
   fl_chart: ^0.69.0
   intl: ^0.19.0
-  http: ^1.2.1   # (or the latest version)
+  http: ^1.2.1
+  weather_animation: ^1.1.2
+
+
 
 
   # The following adds the Cupertino Icons font to your application.
@@ -97,10 +100,4 @@ flutter:
   assets:
     - assets/images/
     - assets/icons/
-#  fonts:
-#    - family: Inter
-#      fonts:
-#        - asset: assets/fonts/Inter-Medium.ttf
-#          weight: 500
-#        - asset: assets/fonts/Inter-Bold.ttf
-#          weight: 700
+

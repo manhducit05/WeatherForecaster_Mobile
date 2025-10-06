@@ -59,12 +59,12 @@ class SunPainter extends CustomPainter {
     final center = Offset(size.width / 2, size.height / 2);
 
     // Mặt trời
-    final circlePaint = Paint()..color = Colors.yellow.withOpacity(0.6);
+    final circlePaint = Paint()..color = Colors.yellow.withValues(alpha: 0.6);
     canvas.drawCircle(center, 60, circlePaint);
 
     // Tia nắng
     final rayPaint = Paint()
-      ..color = Colors.yellow.withOpacity(0.6)
+      ..color = Colors.yellow.withValues(alpha: 0.6)
       ..strokeWidth = 6;
 
     for (var i = 0; i < 8; i++) {
@@ -74,7 +74,6 @@ class SunPainter extends CustomPainter {
       canvas.drawLine(start, end, rayPaint);
     }
   }
-
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }

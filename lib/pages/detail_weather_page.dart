@@ -4,10 +4,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import '../constant/text.dart';
-import '../weather_effects/cloudy_effect.dart';
-import '../weather_effects/sunny_effect.dart';
-import '../weather_effects/rainy_effect.dart';
-import '../weather_effects/thunderstorm_effect.dart';
+import 'package:weather_animation/weather_animation.dart';
 
 class DetailWeatherPage extends StatefulWidget {
   final Map<String, dynamic> weatherData;
@@ -24,7 +21,6 @@ class DetailWeatherPage extends StatefulWidget {
 }
 
 class _DetailWeatherPage extends State<DetailWeatherPage> {
-
   // Danh sách location mẫu (bạn có thể thay bằng dữ liệu thật)
   final List<Map<String, dynamic>> _locations = [
     {'name': 'Bangkok', 'lat': 13.7563, 'lon': 100.5018, 'tz': 'Asia/Bangkok'},
@@ -118,7 +114,7 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
     return [51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 97].contains(code);
   }
 
-// ✅ Getter tự tính todayCode dựa trên dữ liệu
+  // ✅ Getter tự tính todayCode dựa trên dữ liệu
   int get _todayCode {
     final daily = (widget.weatherData['daily'] ?? {}) as Map<String, dynamic>;
     final hourly = (widget.weatherData['hourly'] ?? {}) as Map<String, dynamic>;
@@ -137,21 +133,18 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
     }
   }
 
-// ✅ Các getter trạng thái animation
+  // ✅ Các getter trạng thái animation
   bool get isSunny => _todayCode == 0;
 
   bool get isPartlyCloudy => [1, 2].contains(_todayCode);
 
   bool get isCloudy => _todayCode == 3;
 
-  bool get isRainy =>
-      [51, 53, 55, 61, 63, 65, 80, 81, 82].contains(_todayCode);
+  bool get isRainy => [51, 53, 55, 61, 63, 65, 80, 81, 82].contains(_todayCode);
 
-  bool get isThunderStorm =>
-      [95, 96, 99].contains(_todayCode);
+  bool get isThunderStorm => [95, 96, 99].contains(_todayCode);
   @override
   Widget build(BuildContext context) {
-
     // safety checks, chia weather data nhận được thành các List để sử dụng
     final daily = (widget.weatherData['daily'] ?? {}) as Map<String, dynamic>;
     final hourly = (widget.weatherData['hourly'] ?? {}) as Map<String, dynamic>;
@@ -410,31 +403,206 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
         },
       );
     }
+
     return Scaffold(
       backgroundColor: isRainySelectedDay ? null : const Color(0xFFD59A2F),
       body: Stack(
-        children:[
+        children: [
           AnimatedContainer(
-          duration: const Duration(milliseconds: 500),
-          curve: Curves.easeInOut,
-          width: double.infinity,
-          height: double.infinity,
-          decoration: isRainySelectedDay
-              ? const BoxDecoration(
-                  image: DecorationImage(
-                    image: AssetImage("assets/images/bg_rainy.png"),
-                    fit: BoxFit.cover,
-                  ),
-                )
-              : const BoxDecoration(color: Color(0xFFD59A2F)),
-        ),
-          // ✅ HIỆU ỨNG TRÊN NỀN
-          if (isSunny) const SunnyEffect(),
-          if (isCloudy || isPartlyCloudy) const CloudyEffect(),
-          if (isRainy) const RainyEffect(),
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeInOut,
+            width: double.infinity,
+            height: double.infinity,
+            decoration: isRainySelectedDay
+                ? const BoxDecoration(
+                    image: DecorationImage(
+                      image: AssetImage("assets/images/bg_rainy.png"),
+                      fit: BoxFit.cover,
+                    ),
+                  )
+                : const BoxDecoration(color: Color(0xFFD59A2F)),
+          ),
+          // ✅ HIỆU ỨNG NẮNG (ánh sáng lung linh)
+          if (isSunny)
+            SunWidget(
+              sunConfig: SunConfig(
+                width: 380,
+                blurSigma: 17,
+                blurStyle: BlurStyle.solid,
+                isLeftLocation: true,
+                coreColor: Color.fromARGB(
+                  255,   // alpha = 1.0  → 255
+                  245,   // red   = 0.9608 → ~245
+                  124,   // green = 0.4863 → ~124
+                  0,     // blue  = 0.0000 → 0
+                ),
+                midColor: Color.fromARGB(
+                  255,   // alpha
+                  255,   // red   = 1.0000
+                  238,   // green = 0.9333 → ~238
+                  88,    // blue  = 0.3451 → ~88
+                ),
+                outColor: Color.fromARGB(
+                  255,   // alpha
+                  255,   // red   = 1.0000
+                  167,   // green = 0.6549 → ~167
+                  38,    // blue  = 0.1490 → ~38
+                ),
+                animMidMill: 1500,
+                animOutMill: 1500,
+              ),
+            ),
+
+          // ✅ HIỆU ỨNG MƯA / SẤM / MÂY (ưu tiên bão > mưa > mây)
           if (isThunderStorm) ...[
-            const RainyEffect(),
-            const ThunderStormEffect(),
+            WindWidget(
+              windConfig: WindConfig(
+                width: 5,
+                y: 208,
+                windGap: 10,
+                blurSigma: 6,
+                color: const Color.fromARGB(255, 96, 125, 139), // 0.3765, 0.4902, 0.5451
+                slideXStart: 0,
+                slideXEnd: 350,
+                pauseStartMill: 50,
+                pauseEndMill: 6000,
+                slideDurMill: 1000,
+                blurStyle: BlurStyle.solid,
+              ),
+            ),
+
+            RainWidget(
+              rainConfig: RainConfig(
+                count: 40,
+                lengthDrop: 13,
+                widthDrop: 4,
+                color: const Color.fromARGB(153, 120, 144, 156), // 0.6000, 0.4706, 0.5647, 0.6118
+                isRoundedEndsDrop: true,
+                widgetRainDrop: null,
+                fallRangeMinDurMill: 500,
+                fallRangeMaxDurMill: 1500,
+                areaXStart: 41,
+                areaXEnd: 264,
+                areaYStart: 208,
+                areaYEnd: 620,
+                slideX: 2,
+                slideY: 0,
+                slideDurMill: 2000,
+                slideCurve: const Cubic(0.40, 0.00, 0.20, 1.00),
+                fallCurve: const Cubic(0.55, 0.09, 0.68, 0.53),
+                fadeCurve: const Cubic(0.95, 0.05, 0.80, 0.04),
+              ),
+            ),
+
+            ThunderWidget(
+              thunderConfig: ThunderConfig(
+                thunderWidth: 11,
+                blurSigma: 28,
+                blurStyle: BlurStyle.solid,
+                color: const Color.fromARGB(153, 255, 238, 88), // 0.6000, 1.0000, 0.9333, 0.3451
+                flashStartMill: 50,
+                flashEndMill: 300,
+                pauseStartMill: 50,
+                pauseEndMill: 6000,
+                points: const [
+                  Offset(110.0, 210.0),
+                  Offset(120.0, 240.0),
+                ],
+              ),
+            ),
+
+            WindWidget(
+              windConfig: WindConfig(
+                width: 7,
+                y: 300,
+                windGap: 15,
+                blurSigma: 7,
+                color: const Color.fromARGB(255, 96, 125, 139),
+                slideXStart: 0,
+                slideXEnd: 350,
+                pauseStartMill: 50,
+                pauseEndMill: 6000,
+                slideDurMill: 1000,
+                blurStyle: BlurStyle.solid,
+              ),
+            ),
+
+          ]
+
+          else if (isRainy) ...[
+            RainWidget(
+              rainConfig: RainConfig(
+                count: 25,
+                lengthDrop: 13,
+                widthDrop: 4,
+                color: const Color.fromARGB(255, 158, 158, 158), // 1.0, 0.6196, 0.6196, 0.6196
+                isRoundedEndsDrop: true,
+                widgetRainDrop: null,
+                fallRangeMinDurMill: 500,
+                fallRangeMaxDurMill: 1500,
+                areaXStart: 41,
+                areaXEnd: 350,
+                areaYStart: 208,
+                areaYEnd: 620,
+                slideX: 6,
+                slideY: 0,
+                slideDurMill: 2000,
+                slideCurve: const Cubic(0.40, 0.00, 0.20, 1.00),
+                fallCurve: const Cubic(0.55, 0.09, 0.68, 0.53),
+                fadeCurve: const Cubic(0.95, 0.05, 0.80, 0.04),
+              ),
+            ),
+          ]
+          else if (isCloudy || isPartlyCloudy) ...[
+              SunWidget(
+                sunConfig: SunConfig(
+                  width: 300,
+                  blurSigma: 8,
+                  blurStyle: BlurStyle.solid,
+                  isLeftLocation: true,
+                  coreColor: const Color.fromARGB(255, 255, 183, 77),   // 1.0, 1.0, 0.7176, 0.3020
+                  midColor: const Color.fromARGB(255, 255, 255, 141),   // 1.0, 1.0, 1.0, 0.5529
+                  outColor: const Color.fromARGB(255, 255, 209, 128),   // 1.0, 1.0, 0.8196, 0.5020
+                  animMidMill: 2000,
+                  animOutMill: 2000,
+                ),
+              ),
+
+              CloudWidget(
+                cloudConfig: CloudConfig(
+                  size: 250,
+                  color: const Color.fromARGB(168, 250, 250, 250), // 0.6588, 0.9804, 0.9804, 0.9804
+                  icon: const IconData(63056, fontFamily: 'MaterialIcons'),
+                  widgetCloud: null,
+                  x: 20,
+                  y: 3,
+                  scaleBegin: 1,
+                  scaleEnd: 1.08,
+                  scaleCurve: const Cubic(0.40, 0.00, 0.20, 1.00),
+                  slideX: 20,
+                  slideY: 0,
+                  slideDurMill: 3000,
+                  slideCurve: const Cubic(0.40, 0.00, 0.20, 1.00),
+                ),
+              ),
+
+              CloudWidget(
+                cloudConfig: CloudConfig(
+                  size: 160,
+                  color: const Color.fromARGB(168, 250, 250, 250), // 0.6588, 0.9804, 0.9804, 0.9804
+                  icon: const IconData(63056, fontFamily: 'MaterialIcons'),
+                  widgetCloud: null,
+                  x: 140,
+                  y: 97,
+                  scaleBegin: 1,
+                  scaleEnd: 1.1,
+                  scaleCurve: const Cubic(0.40, 0.00, 0.20, 1.00),
+                  slideX: 20,
+                  slideY: 4,
+                  slideDurMill: 2000,
+                  slideCurve: const Cubic(0.40, 0.00, 0.20, 1.00),
+                ),
+              ),
           ],
           SafeArea(
             child: Padding(
@@ -491,7 +659,9 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
                         iconSize: 40,
                         icon: const CircleAvatar(
                           radius: 18,
-                          backgroundImage: AssetImage("assets/images/avatar.png"),
+                          backgroundImage: AssetImage(
+                            "assets/images/avatar.png",
+                          ),
                         ),
                         color: Colors.black87,
                         onSelected: (value) {
@@ -600,7 +770,8 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
                       itemCount: dailyTimes.length,
                       itemBuilder: (context, idx) {
                         final dt =
-                            DateTime.tryParse(dailyTimes[idx]) ?? DateTime.now();
+                            DateTime.tryParse(dailyTimes[idx]) ??
+                            DateTime.now();
                         final iconPath = _smallIconForCode(
                           dailyCodes[idx] as int,
                         );
@@ -620,9 +791,9 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
                             padding: const EdgeInsets.symmetric(vertical: 4),
                             decoration: isSelected
                                 ? BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.3),
-                              borderRadius: BorderRadius.circular(12),
-                            )
+                                    color: Colors.white.withValues(alpha: 0.3),
+                                    borderRadius: BorderRadius.circular(12),
+                                  )
                                 : null,
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
@@ -745,7 +916,7 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
               ),
             ),
           ),
-      ],
+        ],
       ),
     );
   }

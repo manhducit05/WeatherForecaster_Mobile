@@ -1,8 +1,4 @@
 import 'package:flutter/material.dart';
-import 'dart:math';
-
-import 'package:flutter_svg/svg.dart';
-
 class CloudyEffect extends StatefulWidget {
   const CloudyEffect({super.key});
 
