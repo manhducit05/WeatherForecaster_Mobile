@@ -643,7 +643,6 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
                 animOutMill: 2000,
               ),
             ),
-
             CloudWidget(
               cloudConfig: CloudConfig(
                 size: 250,
@@ -666,7 +665,6 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
                 slideCurve: const Cubic(0.40, 0.00, 0.20, 1.00),
               ),
             ),
-
             CloudWidget(
               cloudConfig: CloudConfig(
                 size: 160,
@@ -680,6 +678,28 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
                 widgetCloud: null,
                 x: 140,
                 y: 97,
+                scaleBegin: 1,
+                scaleEnd: 1.1,
+                scaleCurve: const Cubic(0.40, 0.00, 0.20, 1.00),
+                slideX: 20,
+                slideY: 4,
+                slideDurMill: 2000,
+                slideCurve: const Cubic(0.40, 0.00, 0.20, 1.00),
+              ),
+            ),
+            CloudWidget(
+              cloudConfig: CloudConfig(
+                size: 160,
+                color: const Color.fromARGB(
+                  168,
+                  250,
+                  250,
+                  250,
+                ), // 0.6588, 0.9804, 0.9804, 0.9804
+                icon: const IconData(63056, fontFamily: 'MaterialIcons'),
+                widgetCloud: null,
+                x: 240,
+                y: 67,
                 scaleBegin: 1,
                 scaleEnd: 1.1,
                 scaleCurve: const Cubic(0.40, 0.00, 0.20, 1.00),
