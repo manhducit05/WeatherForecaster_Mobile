@@ -16,7 +16,6 @@ class DetailWeatherPage extends StatefulWidget {
     required this.weatherData,
     required this.onLocationChange,
   });
-
   @override
   State<DetailWeatherPage> createState() => _DetailWeatherPage();
 }
@@ -47,16 +46,6 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
       'tz': 'America/Los_Angeles',
     },
   ];
-  int get _utcOffsetSeconds {
-    return widget.weatherData['utc_offset_seconds'] ?? 0;
-  }
-
-  // Hàm mới để lấy DateTime hiện tại của thành phố được chọn
-  DateTime _getCurrentCityTime() {
-    final nowUtc = DateTime.now().toUtc();
-    // Áp dụng độ lệch UTC từ API (vd: 3600 cho London)
-    return nowUtc.add(Duration(seconds: _utcOffsetSeconds));
-  }
 
   @override
   void initState() {
@@ -70,8 +59,19 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
     );
   }
 
+  // Xử lý chênh lệch múi giờ => DateTime hiện tại của thành phố được chọn
+  int get _utcOffsetSeconds {
+    return widget.weatherData['utc_offset_seconds'] ?? 0;
+  }
+  DateTime _getCurrentCityTime() {
+    final nowUtc = DateTime.now().toUtc();
+    // Áp dụng độ lệch UTC từ API (vd: 3600 cho London)
+    return nowUtc.add(Duration(seconds: _utcOffsetSeconds));
+  }
   // Biến giữ location đang chọn
   Map<String, dynamic>? _selectedLocation;
+
+  // Phân loại trạng thái thời tiết theo mã thời tiết
   String _mapWeatherText(int code) {
     if (code == 0) return "Clear sky";
     if ([1, 2].contains(code)) return "Partly cloudy";
@@ -126,7 +126,7 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
     return [51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 97].contains(code);
   }
 
-  // ✅ Getter tự tính todayCode dựa trên dữ liệu
+  // Getter tự tính todayCode dựa trên dữ liệu
   int get _todayCode {
     final daily = (widget.weatherData['daily'] ?? {}) as Map<String, dynamic>;
     final hourly = (widget.weatherData['hourly'] ?? {}) as Map<String, dynamic>;
@@ -145,7 +145,7 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
     }
   }
 
-  // ✅ Các getter trạng thái animation
+  // Các getter trạng thái animation
   bool get isSunny => _todayCode == 0;
 
   bool get isPartlyCloudy => [1, 2].contains(_todayCode);
@@ -182,9 +182,12 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
         ? (dailyCodes[_selectedDateIndex] as int)
         : (hourlyCodes.isNotEmpty ? hourlyCodes[0] : 3));
 
-    final todayMax = dailyMax.isNotEmpty
-        ? (dailyMax[_selectedDateIndex] as num).toDouble()
-        : (hourlyTemps.isNotEmpty ? hourlyTemps[0] : 0.0);
+    final todayAvg = (dailyMax.isNotEmpty && dailyMin.isNotEmpty)
+        ? (((dailyMax[_selectedDateIndex] as num) +
+        (dailyMin[_selectedDateIndex] as num)) / 2).toDouble()
+        : (hourlyTemps.isNotEmpty
+        ? (hourlyTemps.reduce((a, b) => a + b) / hourlyTemps.length)
+        : 0.0);
 
     final rawDateStr = dailyTimes.isNotEmpty
         ? dailyTimes[_selectedDateIndex]
@@ -205,27 +208,6 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
     });
     if (todayIndex == -1) todayIndex = 0;
 
-    int totalDays = dailyTimes.length;
-    int start = todayIndex - 2;
-    int end = todayIndex + 2;
-
-    // Điều chỉnh để không bị âm hoặc vượt quá length
-    if (start < 0) {
-      end += -start; // bù thêm vào cuối
-      start = 0;
-    }
-    if (end >= totalDays) {
-      start -= (end - totalDays + 1); // bù ngược lại về đầu
-      end = totalDays - 1;
-    }
-    if (start < 0) start = 0;
-
-    // Giới hạn đúng 5 ngày
-    List<int> indices = [];
-    for (int i = start; i <= end && indices.length < 5; i++) {
-      indices.add(i);
-    }
-
     // Hourly forecast
     final List<Map<String, dynamic>> hourlyPoints = [];
     if (hourlyTimes.isNotEmpty && hourlyTemps.isNotEmpty) {
@@ -245,6 +227,7 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
         }
       }
     }
+
     // report dialog
     void showIncidentReportDialog(BuildContext context) {
       String? tempFeeling;
@@ -279,12 +262,12 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const Text(
-                        // ✅ 0. Subtitle
+                        // 0. Subtitle
                         "Help us improve the weather app by sharing the weather conditions at your location.",
                         style: TextStyle(color: Colors.grey),
                       ),
                       const SizedBox(height: 20),
-                      // ✅ 1. Temperature perception
+                      // 1. Temperature perception
                       const Text(
                         "Current temperature (how it feels)",
                         style: TextStyle(fontWeight: FontWeight.w600),
@@ -434,7 +417,7 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
                   )
                 : const BoxDecoration(color: Color(0xFFD59A2F)),
           ),
-          // ✅ HIỆU ỨNG NẮNG (ánh sáng lung linh)
+          // HIỆU ỨNG NẮNG (ánh sáng lung linh)
           if (isSunny)
             SunWidget(
               sunConfig: SunConfig(
@@ -465,7 +448,7 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
               ),
             ),
 
-          // ✅ HIỆU ỨNG MƯA / SẤM / MÂY (ưu tiên bão > mưa > mây)
+          // HIỆU ỨNG MƯA / SẤM / MÂY (ưu tiên bão > mưa > mây)
           if (isThunderStorm) ...[
             WindWidget(
               windConfig: WindConfig(
@@ -531,9 +514,7 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
                 flashEndMill: 300,
                 pauseStartMill: 50,
                 pauseEndMill: 6000,
-                points:  [
-                  Offset(110.w, 210.h),
-                  Offset(120.w, 240.h),],
+                points: [Offset(110.w, 210.h), Offset(120.w, 240.h)],
               ),
             ),
 
@@ -580,8 +561,7 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
                 fadeCurve: const Cubic(0.95, 0.05, 0.80, 0.04),
               ),
             ),
-          ]
-          else if (isFoggy) ...[
+          ] else if (isFoggy) ...[
             CloudWidget(
               cloudConfig: CloudConfig(
                 size: 350,
@@ -618,8 +598,7 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
                 slideDurMill: 12000,
               ),
             ),
-          ]
-            else if (isCloudy || isPartlyCloudy) ...[
+          ] else if (isCloudy || isPartlyCloudy) ...[
             SunWidget(
               sunConfig: SunConfig(
                 width: 300,
@@ -862,7 +841,7 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
                       ),
                     ),
                     Text(
-                      "${todayMax.toInt()}°C",
+                      "${todayAvg.toInt()}°C",
                       style: const TextStyle(
                         fontSize: 64,
                         color: Colors.white,
@@ -904,7 +883,9 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
                               padding: const EdgeInsets.symmetric(vertical: 4),
                               decoration: isSelected
                                   ? BoxDecoration(
-                                      color: Colors.white.withValues(alpha: 0.3),
+                                      color: Colors.white.withValues(
+                                        alpha: 0.3,
+                                      ),
                                       borderRadius: BorderRadius.circular(12),
                                     )
                                   : null,
@@ -993,7 +974,7 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
                             items: hourlyPoints,
                             iconForCode: _smallIconForCode,
                             getCurrentTime:
-                                _getCurrentCityTime, // ✅ truyền hàm xuống
+                                _getCurrentCityTime, // truyền hàm xuống
                           ),
                           const SizedBox(height: 10),
 
@@ -1041,7 +1022,7 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
 class HourlyChart extends StatefulWidget {
   final List<Map<String, dynamic>> items;
   final String Function(int) iconForCode;
-  final DateTime Function() getCurrentTime; // ✅ nhận hàm
+  final DateTime Function() getCurrentTime; //  nhận hàm
 
   const HourlyChart({
     super.key,
@@ -1188,10 +1169,10 @@ class _HourlyChartState extends State<HourlyChart> {
                       );
                     }
 
-                    // ✅ Lấy giờ hiện tại theo thành phố
+                    // Lấy giờ hiện tại theo thành phố
                     final nowCity = widget.getCurrentTime();
 
-                    // ✅ So sánh parsed với giờ địa phương của thành phố
+                    // So sánh parsed với giờ địa phương của thành phố
                     final isSameDay =
                         parsed.year == nowCity.year &&
                         parsed.month == nowCity.month &&
@@ -1199,7 +1180,7 @@ class _HourlyChartState extends State<HourlyChart> {
 
                     final isSameHour = parsed.hour == nowCity.hour;
 
-                    // ✅ Nếu khớp thì hiển thị "Now"
+                    // Nếu khớp thì hiển thị "Now"
                     final displayHour = (isSameDay && isSameHour)
                         ? "Now"
                         : hourRaw;

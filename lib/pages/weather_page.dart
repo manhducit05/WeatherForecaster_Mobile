@@ -15,7 +15,7 @@ class _WeatherPageState extends State<WeatherPage> {
   bool _loading = true;
   String? _error;
 
-  // ✅ Các biến latitude, longitude, timezone có thể thay đổi
+  // Các biến latitude, longitude, timezone có thể thay đổi
   double latitude = 13.7563;
   double longitude = 100.5018;
   String timezone = 'Asia/Bangkok';
