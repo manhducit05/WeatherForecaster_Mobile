@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'routes/app_routes.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -10,7 +11,14 @@ void main() async {
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
-  runApp(const MyApp());
+  runApp(
+    ScreenUtilInit(
+      designSize: const Size(1080, 2400), // kích thước thiết kế gốc
+      minTextAdapt: true, // tự scale chữ
+      splitScreenMode: true, // hỗ trợ chia đôi màn hình
+      builder: (_, child) => const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {

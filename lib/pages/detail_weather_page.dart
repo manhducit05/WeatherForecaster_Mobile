@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
@@ -437,8 +438,8 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
           if (isSunny)
             SunWidget(
               sunConfig: SunConfig(
-                width: 380,
-                blurSigma: 17,
+                width: 380.w,
+                blurSigma: 17.r,
                 blurStyle: BlurStyle.solid,
                 isLeftLocation: true,
                 coreColor: Color.fromARGB(
@@ -468,10 +469,10 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
           if (isThunderStorm) ...[
             WindWidget(
               windConfig: WindConfig(
-                width: 5,
-                y: 208,
-                windGap: 10,
-                blurSigma: 6,
+                width: 5.w,
+                y: 208.h,
+                windGap: 10.w,
+                blurSigma: 6.r,
                 color: const Color.fromARGB(
                   255,
                   96,
@@ -479,7 +480,7 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
                   139,
                 ), // 0.3765, 0.4902, 0.5451
                 slideXStart: 0,
-                slideXEnd: 350,
+                slideXEnd: 350.w,
                 pauseStartMill: 50,
                 pauseEndMill: 6000,
                 slideDurMill: 1000,
@@ -491,7 +492,7 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
               rainConfig: RainConfig(
                 count: 40,
                 lengthDrop: 13,
-                widthDrop: 4,
+                widthDrop: 2,
                 color: const Color.fromARGB(
                   153,
                   120,
@@ -503,10 +504,10 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
                 fallRangeMinDurMill: 500,
                 fallRangeMaxDurMill: 1500,
                 areaXStart: 41,
-                areaXEnd: 264,
+                areaXEnd: 300,
                 areaYStart: 208,
                 areaYEnd: 620,
-                slideX: 2,
+                slideX: 2.w,
                 slideY: 0,
                 slideDurMill: 2000,
                 slideCurve: const Cubic(0.40, 0.00, 0.20, 1.00),
@@ -517,8 +518,8 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
 
             ThunderWidget(
               thunderConfig: ThunderConfig(
-                thunderWidth: 11,
-                blurSigma: 28,
+                thunderWidth: 11.w,
+                blurSigma: 28.r,
                 blurStyle: BlurStyle.solid,
                 color: const Color.fromARGB(
                   153,
@@ -530,19 +531,21 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
                 flashEndMill: 300,
                 pauseStartMill: 50,
                 pauseEndMill: 6000,
-                points: const [Offset(110.0, 210.0), Offset(120.0, 240.0)],
+                points:  [
+                  Offset(110.w, 210.h),
+                  Offset(120.w, 240.h),],
               ),
             ),
 
             WindWidget(
               windConfig: WindConfig(
-                width: 7,
-                y: 300,
-                windGap: 15,
-                blurSigma: 7,
+                width: 7.w,
+                y: 300.h,
+                windGap: 15.w,
+                blurSigma: 7.r,
                 color: const Color.fromARGB(255, 96, 125, 139),
                 slideXStart: 0,
-                slideXEnd: 350,
+                slideXEnd: 350.w,
                 pauseStartMill: 50,
                 pauseEndMill: 6000,
                 slideDurMill: 1000,
@@ -554,7 +557,7 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
               rainConfig: RainConfig(
                 count: 25,
                 lengthDrop: 13,
-                widthDrop: 4,
+                widthDrop: 2,
                 color: const Color.fromARGB(
                   255,
                   158,
@@ -577,7 +580,8 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
                 fadeCurve: const Cubic(0.95, 0.05, 0.80, 0.04),
               ),
             ),
-          ] else if (isFoggy) ...[
+          ]
+          else if (isFoggy) ...[
             CloudWidget(
               cloudConfig: CloudConfig(
                 size: 350,
@@ -585,36 +589,37 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
                 icon: Icons.cloud,
                 x: -50,
                 y: 100,
-                slideX: 30,
+                slideX: 100.w,
                 slideY: 0,
                 slideDurMill: 9000,
               ),
             ),
             CloudWidget(
               cloudConfig: CloudConfig(
-                size: 400,
+                size: 160,
                 color: Colors.grey.withValues(alpha: 0.20),
                 icon: Icons.cloud,
                 x: 50,
                 y: 150,
-                slideX: -30,
+                slideX: -30.w,
                 slideY: 0,
                 slideDurMill: 10000,
               ),
             ),
             CloudWidget(
               cloudConfig: CloudConfig(
-                size: 320,
+                size: 220,
                 color: Colors.white.withValues(alpha: 0.18),
                 icon: Icons.cloud,
                 x: 0,
                 y: 30,
-                slideX: 20,
+                slideX: 20.w,
                 slideY: 0,
                 slideDurMill: 12000,
               ),
             ),
-          ] else if (isCloudy || isPartlyCloudy) ...[
+          ]
+            else if (isCloudy || isPartlyCloudy) ...[
             SunWidget(
               sunConfig: SunConfig(
                 width: 300,
@@ -711,316 +716,319 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
             ),
           ],
           SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                children: [
-                  // --- TOP BAR ---
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.location_on, color: Colors.white),
-                          const SizedBox(width: 4),
-                          DropdownButtonHideUnderline(
-                            child: DropdownButton<Map<String, dynamic>>(
-                              dropdownColor: Colors.black87,
-                              elevation: 0, // loại bỏ bóng
-                              value: _selectedLocation,
-                              icon: const Icon(
-                                Icons.keyboard_arrow_down,
-                                color: Colors.white,
-                              ),
-                              items: _locations.map((loc) {
-                                return DropdownMenuItem<Map<String, dynamic>>(
-                                  value: loc,
-                                  child: Text(
-                                    loc['name'],
-                                    style: const TextStyle(
-                                      fontFamily: 'Inter',
-                                      fontSize: 18,
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                );
-                              }).toList(),
-                              onChanged: (val) {
-                                if (val == null) return;
-                                setState(() {
-                                  _selectedLocation = val;
-                                });
-                                widget.onLocationChange(
-                                  val['lat'],
-                                  val['lon'],
-                                  val['tz'],
-                                );
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                      PopupMenuButton<int>(
-                        iconSize: 40,
-                        icon: const CircleAvatar(
-                          radius: 18,
-                          backgroundImage: AssetImage(
-                            "assets/images/avatar.png",
-                          ),
-                        ),
-                        color: Colors.black87,
-                        onSelected: (value) {
-                          String title = "";
-                          String content = "";
-
-                          switch (value) {
-                            case 1:
-                              title = AppTexts.titleUserAgreement;
-                              content = AppTexts.userAgreement;
-                              break;
-                            case 2:
-                              title = AppTexts.titlePrivacyPolicy;
-                              content = AppTexts.privacyPolicy;
-                              break;
-                            case 3:
-                              title = AppTexts.titleAppVersion;
-                              content = AppTexts.appVersionInfo;
-                              break;
-                          }
-
-                          showDialog(
-                            context: context,
-                            builder: (context) => AlertDialog(
-                              title: Text(title),
-                              content: SingleChildScrollView(
-                                child: Text(content),
-                              ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(context),
-                                  child: const Text("Close"),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                        itemBuilder: (context) => [
-                          const PopupMenuItem(
-                            value: 1,
-                            child: Text(
-                              "User Agreement",
-                              style: TextStyle(color: Colors.white),
-                            ),
-                          ),
-                          const PopupMenuItem(
-                            value: 2,
-                            child: Text(
-                              "Privacy Policy",
-                              style: TextStyle(color: Colors.white),
-                            ),
-                          ),
-                          const PopupMenuItem(
-                            value: 3,
-                            child: Text(
-                              "App Version",
-                              style: TextStyle(color: Colors.white),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 15),
-
-                  // --- WEATHER ICON + STATUS ---
-                  Text(
-                    _mapWeatherText(todayCode),
-                    style: const TextStyle(fontSize: 24, color: Colors.white),
-                  ),
-                  const SizedBox(height: 8),
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 400),
-                    transitionBuilder: (child, anim) =>
-                        FadeTransition(opacity: anim, child: child),
-                    child: SvgPicture.asset(
-                      _bigIconForCode(todayCode),
-                      key: ValueKey(todayCode),
-                      width: 200,
-                      height: 200,
-                      colorFilter: const ColorFilter.mode(
-                        Colors.white,
-                        BlendMode.srcIn,
-                      ),
-                    ),
-                  ),
-                  Text(
-                    "${todayMax.toInt()}°C",
-                    style: const TextStyle(
-                      fontSize: 64,
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Text(
-                    todayDate,
-                    style: const TextStyle(fontSize: 16, color: Colors.white),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  SizedBox(
-                    height: 100,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: dailyTimes.length,
-                      itemBuilder: (context, idx) {
-                        final dt =
-                            DateTime.tryParse(dailyTimes[idx]) ??
-                            DateTime.now();
-                        final iconPath = _smallIconForCode(
-                          dailyCodes[idx] as int,
-                        );
-                        final isSelected = idx == _selectedDateIndex;
-
-                        return GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _selectedDateIndex = idx;
-                            });
-                          },
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 300),
-                            curve: Curves.easeInOut,
-                            width: 70,
-                            margin: const EdgeInsets.symmetric(horizontal: 6),
-                            padding: const EdgeInsets.symmetric(vertical: 4),
-                            decoration: isSelected
-                                ? BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.3),
-                                    borderRadius: BorderRadius.circular(12),
-                                  )
-                                : null,
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                AnimatedDefaultTextStyle(
-                                  duration: const Duration(milliseconds: 300),
-                                  style: TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: isSelected ? 18 : 14,
-                                    fontWeight: isSelected
-                                        ? FontWeight.bold
-                                        : FontWeight.normal,
-                                  ),
-                                  child: Text(_weekdayShort(dt)),
-                                ),
-                                const SizedBox(height: 6),
-                                AnimatedScale(
-                                  scale: isSelected ? 1.2 : 1.0,
-                                  duration: const Duration(milliseconds: 300),
-                                  curve: Curves.easeInOut,
-                                  child: SvgPicture.asset(
-                                    iconPath,
-                                    width: 28,
-                                    height: 28,
-                                    colorFilter: const ColorFilter.mode(
-                                      Colors.white,
-                                      BlendMode.srcIn,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  "${(dailyMax[idx] as num).toInt()}° / ${(dailyMin[idx] as num).toInt()}°",
-                                  style: TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: isSelected ? 14 : 12,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-
-                  // --- HOURLY FORECAST ---
-                  Container(
-                    width: double.infinity,
-                    margin: const EdgeInsets.only(top: 5),
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    // --- TOP BAR ---
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // label
                         Row(
                           children: [
-                            SvgPicture.asset(
-                              "assets/icons/clock.svg",
-                              width: 16,
-                              height: 16,
-                              colorFilter: const ColorFilter.mode(
-                                Colors.white,
-                                BlendMode.srcIn,
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            const Text(
-                              "24-hour forecast",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
+                            const Icon(Icons.location_on, color: Colors.white),
+                            const SizedBox(width: 4),
+                            DropdownButtonHideUnderline(
+                              child: DropdownButton<Map<String, dynamic>>(
+                                dropdownColor: Colors.black87,
+                                elevation: 0, // loại bỏ bóng
+                                value: _selectedLocation,
+                                icon: const Icon(
+                                  Icons.keyboard_arrow_down,
+                                  color: Colors.white,
+                                ),
+                                items: _locations.map((loc) {
+                                  return DropdownMenuItem<Map<String, dynamic>>(
+                                    value: loc,
+                                    child: Text(
+                                      loc['name'],
+                                      style: const TextStyle(
+                                        fontFamily: 'Inter',
+                                        fontSize: 18,
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                                onChanged: (val) {
+                                  if (val == null) return;
+                                  setState(() {
+                                    _selectedLocation = val;
+                                  });
+                                  widget.onLocationChange(
+                                    val['lat'],
+                                    val['lon'],
+                                    val['tz'],
+                                  );
+                                },
                               ),
                             ),
                           ],
                         ),
-                        HourlyChart(
-                          items: hourlyPoints,
-                          iconForCode: _smallIconForCode,
-                          getCurrentTime:
-                              _getCurrentCityTime, // ✅ truyền hàm xuống
-                        ),
-                        const SizedBox(height: 10),
-
-                        Center(
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.amber,
-                              shadowColor: Colors.transparent,
-                              shape: const RoundedRectangleBorder(
-                                borderRadius: BorderRadius.all(
-                                  Radius.circular(20),
-                                ),
-                              ),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 60,
-                                vertical: 12,
-                              ),
-                            ),
-                            onPressed: () {
-                              showIncidentReportDialog(context);
-                            },
-                            child: const Text(
-                              "Incident Report",
-                              style: TextStyle(
-                                color: Colors.black87,
-                                fontSize: 12,
-                              ),
+                        PopupMenuButton<int>(
+                          iconSize: 40,
+                          icon: const CircleAvatar(
+                            radius: 18,
+                            backgroundImage: AssetImage(
+                              "assets/images/avatar.png",
                             ),
                           ),
+                          color: Colors.black87,
+                          onSelected: (value) {
+                            String title = "";
+                            String content = "";
+
+                            switch (value) {
+                              case 1:
+                                title = AppTexts.titleUserAgreement;
+                                content = AppTexts.userAgreement;
+                                break;
+                              case 2:
+                                title = AppTexts.titlePrivacyPolicy;
+                                content = AppTexts.privacyPolicy;
+                                break;
+                              case 3:
+                                title = AppTexts.titleAppVersion;
+                                content = AppTexts.appVersionInfo;
+                                break;
+                            }
+
+                            showDialog(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: Text(title),
+                                content: SingleChildScrollView(
+                                  child: Text(content),
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: const Text("Close"),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                          itemBuilder: (context) => [
+                            const PopupMenuItem(
+                              value: 1,
+                              child: Text(
+                                "User Agreement",
+                                style: TextStyle(color: Colors.white),
+                              ),
+                            ),
+                            const PopupMenuItem(
+                              value: 2,
+                              child: Text(
+                                "Privacy Policy",
+                                style: TextStyle(color: Colors.white),
+                              ),
+                            ),
+                            const PopupMenuItem(
+                              value: 3,
+                              child: Text(
+                                "App Version",
+                                style: TextStyle(color: Colors.white),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 15),
+
+                    // --- WEATHER ICON + STATUS ---
+                    Text(
+                      _mapWeatherText(todayCode),
+                      style: const TextStyle(fontSize: 24, color: Colors.white),
+                    ),
+                    const SizedBox(height: 8),
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 400),
+                      transitionBuilder: (child, anim) =>
+                          FadeTransition(opacity: anim, child: child),
+                      child: SvgPicture.asset(
+                        _bigIconForCode(todayCode),
+                        key: ValueKey(todayCode),
+                        width: 200,
+                        height: 200,
+                        colorFilter: const ColorFilter.mode(
+                          Colors.white,
+                          BlendMode.srcIn,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      "${todayMax.toInt()}°C",
+                      style: const TextStyle(
+                        fontSize: 64,
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      todayDate,
+                      style: const TextStyle(fontSize: 16, color: Colors.white),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    SizedBox(
+                      height: 100,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: dailyTimes.length,
+                        itemBuilder: (context, idx) {
+                          final dt =
+                              DateTime.tryParse(dailyTimes[idx]) ??
+                              DateTime.now();
+                          final iconPath = _smallIconForCode(
+                            dailyCodes[idx] as int,
+                          );
+                          final isSelected = idx == _selectedDateIndex;
+
+                          return GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _selectedDateIndex = idx;
+                              });
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 300),
+                              curve: Curves.easeInOut,
+                              width: 70,
+                              margin: const EdgeInsets.symmetric(horizontal: 6),
+                              padding: const EdgeInsets.symmetric(vertical: 4),
+                              decoration: isSelected
+                                  ? BoxDecoration(
+                                      color: Colors.white.withValues(alpha: 0.3),
+                                      borderRadius: BorderRadius.circular(12),
+                                    )
+                                  : null,
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  AnimatedDefaultTextStyle(
+                                    duration: const Duration(milliseconds: 300),
+                                    style: TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: isSelected ? 18 : 14,
+                                      fontWeight: isSelected
+                                          ? FontWeight.bold
+                                          : FontWeight.normal,
+                                    ),
+                                    child: Text(_weekdayShort(dt)),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  AnimatedScale(
+                                    scale: isSelected ? 1.2 : 1.0,
+                                    duration: const Duration(milliseconds: 300),
+                                    curve: Curves.easeInOut,
+                                    child: SvgPicture.asset(
+                                      iconPath,
+                                      width: 28,
+                                      height: 28,
+                                      colorFilter: const ColorFilter.mode(
+                                        Colors.white,
+                                        BlendMode.srcIn,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    "${(dailyMax[idx] as num).toInt()}° / ${(dailyMin[idx] as num).toInt()}°",
+                                    style: TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: isSelected ? 14 : 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+
+                    // --- HOURLY FORECAST ---
+                    Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.only(top: 5),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // label
+                          Row(
+                            children: [
+                              SvgPicture.asset(
+                                "assets/icons/clock.svg",
+                                width: 16,
+                                height: 16,
+                                colorFilter: const ColorFilter.mode(
+                                  Colors.white,
+                                  BlendMode.srcIn,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              const Text(
+                                "24-hour forecast",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                          HourlyChart(
+                            items: hourlyPoints,
+                            iconForCode: _smallIconForCode,
+                            getCurrentTime:
+                                _getCurrentCityTime, // ✅ truyền hàm xuống
+                          ),
+                          const SizedBox(height: 10),
+
+                          Center(
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.amber,
+                                shadowColor: Colors.transparent,
+                                shape: const RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.all(
+                                    Radius.circular(20),
+                                  ),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 60,
+                                  vertical: 12,
+                                ),
+                              ),
+                              onPressed: () {
+                                showIncidentReportDialog(context);
+                              },
+                              child: const Text(
+                                "Incident Report",
+                                style: TextStyle(
+                                  color: Colors.black87,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
