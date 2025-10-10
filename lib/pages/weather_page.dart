@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../pages/detail_weather_page.dart';
+import '../utils/location_helper.dart';
+import '../models/location_model.dart';
+
 
 class WeatherPage extends StatefulWidget {
   const WeatherPage({super.key});
@@ -15,17 +18,32 @@ class _WeatherPageState extends State<WeatherPage> {
   bool _loading = true;
   String? _error;
 
-  // Các biến latitude, longitude, timezone có thể thay đổi
-  double latitude = 13.7563;
-  double longitude = 100.5018;
-  String timezone = 'Asia/Bangkok';
+  double? latitude;
+  double? longitude;
+  String timezone = 'auto';
+
   @override
   void initState() {
     super.initState();
-    fetchWeather();
+    _initLocationAndFetch(); // ✅ lấy vị trí trước khi fetch
   }
 
-  // Hàm cho phép đổi vị trí
+  Future<void> _initLocationAndFetch() async {
+    try {
+      final pos = await LocationHelper.determinePosition();
+      setState(() {
+        latitude = pos.latitude;
+        longitude = pos.longitude;
+      });
+      await fetchWeather();
+    } catch (e) {
+      setState(() {
+        _error = 'Không lấy được vị trí: $e';
+        _loading = false;
+      });
+    }
+  }
+
   void updateLocation(double lat, double lon, String tz) {
     setState(() {
       latitude = lat;
@@ -35,8 +53,11 @@ class _WeatherPageState extends State<WeatherPage> {
     fetchWeather();
   }
 
-  // fetch dữ liệu
   Future<void> fetchWeather() async {
+    if (latitude == null || longitude == null) {
+      return; // chưa có vị trí thì bỏ qua
+    }
+
     setState(() {
       _loading = true;
       _error = null;
@@ -44,10 +65,10 @@ class _WeatherPageState extends State<WeatherPage> {
     try {
       final uri = Uri.parse(
         'https://api.open-meteo.com/v1/forecast'
-        '?latitude=$latitude&longitude=$longitude'
-        '&hourly=temperature_2m,precipitation,weathercode,windspeed_10m'
-        '&daily=temperature_2m_max,temperature_2m_min,weathercode'
-        '&timezone=$timezone',
+            '?latitude=$latitude&longitude=$longitude'
+            '&hourly=temperature_2m,precipitation,weathercode,windspeed_10m'
+            '&daily=temperature_2m_max,temperature_2m_min,weathercode'
+            '&timezone=$timezone',
       );
       final res = await http.get(uri);
       if (res.statusCode == 200) {
@@ -96,7 +117,7 @@ class _WeatherPageState extends State<WeatherPage> {
                 ),
                 const SizedBox(height: 12),
                 ElevatedButton(
-                  onPressed: fetchWeather,
+                  onPressed: _initLocationAndFetch, // ✅ thử lại cả vị trí + fetch
                   child: const Text('Thử lại'),
                 ),
               ],
@@ -113,6 +134,12 @@ class _WeatherPageState extends State<WeatherPage> {
     return DetailWeatherPage(
       weatherData: weatherData!,
       onLocationChange: updateLocation,
+      currentLocation: LocationModel(
+        name: "Vị trí hiện tại",
+        lat: latitude!,
+        lon: longitude!,
+        tz: timezone,
+      ),
     );
   }
 }

@@ -45,5 +45,10 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+
+	<key>NSLocationWhenInUseUsageDescription</key>
+    <string>Ứng dụng cần quyền vị trí để hiển thị vị trí hiện tại của bạn.</string>
+    <key>NSLocationAlwaysUsageDescription</key>
+    <string>Ứng dụng cần quyền vị trí để hoạt động chính xác.</string>
 </dict>
 </plist>

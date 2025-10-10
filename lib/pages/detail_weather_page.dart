@@ -6,15 +6,17 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import '../constant/text.dart';
 import 'package:weather_animation/weather_animation.dart';
+import '../models/location_model.dart';
 
 class DetailWeatherPage extends StatefulWidget {
   final Map<String, dynamic> weatherData;
   final Function(double lat, double lon, String tz) onLocationChange;
-
+  final LocationModel currentLocation;
   const DetailWeatherPage({
     super.key,
     required this.weatherData,
     required this.onLocationChange,
+    required this.currentLocation,
   });
   @override
   State<DetailWeatherPage> createState() => _DetailWeatherPage();
@@ -22,29 +24,14 @@ class DetailWeatherPage extends StatefulWidget {
 
 class _DetailWeatherPage extends State<DetailWeatherPage> {
   // Danh sách location mẫu (bạn có thể thay bằng dữ liệu thật)
-  final List<Map<String, dynamic>> _locations = [
-    {'name': 'Bangkok', 'lat': 13.7563, 'lon': 100.5018, 'tz': 'Asia/Bangkok'},
-    {
-      'name': 'New York',
-      'lat': 40.7128,
-      'lon': -74.0060,
-      'tz': 'America/New_York',
-    },
-    {'name': 'London', 'lat': 51.5074, 'lon': -0.1278, 'tz': 'Europe/London'},
-    {'name': 'Tokyo', 'lat': 35.6895, 'lon': 139.6917, 'tz': 'Asia/Tokyo'},
-    {
-      'name': 'Sydney',
-      'lat': -33.8688,
-      'lon': 151.2093,
-      'tz': 'Australia/Sydney',
-    },
-    {'name': 'Paris', 'lat': 48.8566, 'lon': 2.3522, 'tz': 'Europe/Paris'},
-    {
-      'name': 'Los Angeles',
-      'lat': 34.0522,
-      'lon': -118.2437,
-      'tz': 'America/Los_Angeles',
-    },
+  late final List<LocationModel> _locations = [
+    widget.currentLocation,
+    LocationModel(name: 'Bangkok', lat: 13.7563, lon: 100.5018, tz: 'Asia/Bangkok'),
+    LocationModel(name: 'New York', lat: 40.7128, lon: -74.0060, tz: 'America/New_York'),
+    LocationModel(name: 'London', lat: 51.5074, lon: -0.1278, tz: 'Europe/London'),
+    LocationModel(name: 'Tokyo', lat: 35.6895, lon: 139.6917, tz: 'Asia/Tokyo'),
+    LocationModel(name: 'Sydney', lat: -33.8688, lon: 151.2093, tz: 'Australia/Sydney'),
+    LocationModel(name: 'Paris', lat: 48.8566, lon: 2.3522, tz: 'Europe/Paris'),
   ];
 
   @override
@@ -54,7 +41,7 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
     final currentTz = widget.weatherData['timezone'] ?? 'Asia/Bangkok';
 
     _selectedLocation = _locations.firstWhere(
-      (loc) => loc['tz'] == currentTz,
+          (loc) => loc.tz == currentTz,
       orElse: () => _locations.first,
     );
   }
@@ -69,7 +56,8 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
     return nowUtc.add(Duration(seconds: _utcOffsetSeconds));
   }
   // Biến giữ location đang chọn
-  Map<String, dynamic>? _selectedLocation;
+  late LocationModel _selectedLocation;
+
 
   // Phân loại trạng thái thời tiết theo mã thời tiết
   String _mapWeatherText(int code) {
@@ -417,7 +405,7 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
                   )
                 : const BoxDecoration(color: Color(0xFFD59A2F)),
           ),
-          // HIỆU ỨNG NẮNG (ánh sáng lung linh)
+          // HIỆU ỨNG NẮNG
           if (isSunny)
             SunWidget(
               sunConfig: SunConfig(
@@ -448,7 +436,7 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
               ),
             ),
 
-          // HIỆU ỨNG MƯA / SẤM / MÂY (ưu tiên bão > mưa > mây)
+          // HIỆU ỨNG MƯA / SẤM / MÂY
           if (isThunderStorm) ...[
             WindWidget(
               windConfig: WindConfig(
@@ -710,7 +698,7 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
                             const Icon(Icons.location_on, color: Colors.white),
                             const SizedBox(width: 4),
                             DropdownButtonHideUnderline(
-                              child: DropdownButton<Map<String, dynamic>>(
+                              child: DropdownButton<LocationModel>(
                                 dropdownColor: Colors.black87,
                                 elevation: 0, // loại bỏ bóng
                                 value: _selectedLocation,
@@ -719,10 +707,10 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
                                   color: Colors.white,
                                 ),
                                 items: _locations.map((loc) {
-                                  return DropdownMenuItem<Map<String, dynamic>>(
+                                  return DropdownMenuItem<LocationModel>(
                                     value: loc,
                                     child: Text(
-                                      loc['name'],
+                                      loc.name, // ✅ thay vì loc['name']
                                       style: const TextStyle(
                                         fontFamily: 'Inter',
                                         fontSize: 18,
@@ -738,9 +726,9 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
                                     _selectedLocation = val;
                                   });
                                   widget.onLocationChange(
-                                    val['lat'],
-                                    val['lon'],
-                                    val['tz'],
+                                    val.lat, // ✅ thay vì val['lat']
+                                    val.lon, // ✅ thay vì val['lon']
+                                    val.tz,  // ✅ thay vì val['tz']
                                   );
                                 },
                               ),
