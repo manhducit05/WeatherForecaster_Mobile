@@ -10,54 +10,65 @@ import '../models/location_model.dart';
 
 class DetailWeatherPage extends StatefulWidget {
   final Map<String, dynamic> weatherData;
-  final Function(double lat, double lon, String tz) onLocationChange;
+  final LocationModel selectedLocation;
   final LocationModel currentLocation;
+  final Function(LocationModel) onLocationChange;
   const DetailWeatherPage({
     super.key,
     required this.weatherData,
-    required this.onLocationChange,
+    required this.selectedLocation,
     required this.currentLocation,
+    required this.onLocationChange,
   });
   @override
   State<DetailWeatherPage> createState() => _DetailWeatherPage();
 }
 
 class _DetailWeatherPage extends State<DetailWeatherPage> {
-  // Danh sách location mẫu (bạn có thể thay bằng dữ liệu thật)
-  late final List<LocationModel> _locations = [
-    widget.currentLocation,
-    LocationModel(name: 'Bangkok', lat: 13.7563, lon: 100.5018, tz: 'Asia/Bangkok'),
-    LocationModel(name: 'New York', lat: 40.7128, lon: -74.0060, tz: 'America/New_York'),
-    LocationModel(name: 'London', lat: 51.5074, lon: -0.1278, tz: 'Europe/London'),
-    LocationModel(name: 'Tokyo', lat: 35.6895, lon: 139.6917, tz: 'Asia/Tokyo'),
-    LocationModel(name: 'Sydney', lat: -33.8688, lon: 151.2093, tz: 'Australia/Sydney'),
-    LocationModel(name: 'Paris', lat: 48.8566, lon: 2.3522, tz: 'Europe/Paris'),
-  ];
-
+  // Biến giữ location đang chọn
+  late List<LocationModel> _locations;
+  late LocationModel _selectedLocation;
   @override
   void initState() {
     super.initState();
 
-    final currentTz = widget.weatherData['timezone'] ?? 'Asia/Bangkok';
-
-    _selectedLocation = _locations.firstWhere(
-          (loc) => loc.tz == currentTz,
-      orElse: () => _locations.first,
-    );
+    _selectedLocation = widget.selectedLocation;
+    _buildLocations(); // build danh sách ban đầu
   }
+  void _buildLocations() {
+    final sampleLocations = <LocationModel>[
+      LocationModel(name: 'Bangkok', lat: 13.7563, lon: 100.5018, tz: 'Asia/Bangkok'),
+      LocationModel(name: 'New York', lat: 40.7128, lon: -74.0060, tz: 'America/New_York'),
+      LocationModel(name: 'London', lat: 51.5074, lon: -0.1278, tz: 'Europe/London'),
+      LocationModel(name: 'Tokyo', lat: 35.6895, lon: 139.6917, tz: 'Asia/Tokyo'),
+      LocationModel(name: 'Sydney', lat: -33.8688, lon: 151.2093, tz: 'Australia/Sydney'),
+      LocationModel(name: 'Paris', lat: 48.8566, lon: 2.3522, tz: 'Europe/Paris'),
+    ];
 
+    // luôn giữ currentLocation
+    _locations = [widget.currentLocation];
+
+    // add sample (loại bỏ trùng current)
+    _locations.addAll(
+      sampleLocations.where((loc) => loc.tz != widget.currentLocation.tz),
+    );
+
+    // nếu selected khác current và chưa có thì add thêm
+    if (_selectedLocation.tz != widget.currentLocation.tz &&
+        !_locations.any((loc) => loc.tz == _selectedLocation.tz)) {
+      _locations.add(_selectedLocation);
+    }
+  }
   // Xử lý chênh lệch múi giờ => DateTime hiện tại của thành phố được chọn
   int get _utcOffsetSeconds {
     return widget.weatherData['utc_offset_seconds'] ?? 0;
   }
+
   DateTime _getCurrentCityTime() {
     final nowUtc = DateTime.now().toUtc();
     // Áp dụng độ lệch UTC từ API (vd: 3600 cho London)
     return nowUtc.add(Duration(seconds: _utcOffsetSeconds));
   }
-  // Biến giữ location đang chọn
-  late LocationModel _selectedLocation;
-
 
   // Phân loại trạng thái thời tiết theo mã thời tiết
   String _mapWeatherText(int code) {
@@ -172,10 +183,12 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
 
     final todayAvg = (dailyMax.isNotEmpty && dailyMin.isNotEmpty)
         ? (((dailyMax[_selectedDateIndex] as num) +
-        (dailyMin[_selectedDateIndex] as num)) / 2).toDouble()
+                      (dailyMin[_selectedDateIndex] as num)) /
+                  2)
+              .toDouble()
         : (hourlyTemps.isNotEmpty
-        ? (hourlyTemps.reduce((a, b) => a + b) / hourlyTemps.length)
-        : 0.0);
+              ? (hourlyTemps.reduce((a, b) => a + b) / hourlyTemps.length)
+              : 0.0);
 
     final rawDateStr = dailyTimes.isNotEmpty
         ? dailyTimes[_selectedDateIndex]
@@ -215,7 +228,51 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
         }
       }
     }
+    // Danh sách location mẫu
+    final sampleLocations = <LocationModel>[
+      LocationModel(
+        name: 'Bangkok',
+        lat: 13.7563,
+        lon: 100.5018,
+        tz: 'Asia/Bangkok',
+      ),
+      LocationModel(
+        name: 'New York',
+        lat: 40.7128,
+        lon: -74.0060,
+        tz: 'America/New_York',
+      ),
+      LocationModel(
+        name: 'London',
+        lat: 51.5074,
+        lon: -0.1278,
+        tz: 'Europe/London',
+      ),
+      LocationModel(
+        name: 'Tokyo',
+        lat: 35.6895,
+        lon: 139.6917,
+        tz: 'Asia/Tokyo',
+      ),
+      LocationModel(
+        name: 'Sydney',
+        lat: -33.8688,
+        lon: 151.2093,
+        tz: 'Australia/Sydney',
+      ),
+      LocationModel(
+        name: 'Paris',
+        lat: 48.8566,
+        lon: 2.3522,
+        tz: 'Europe/Paris',
+      ),
+    ];
 
+    // Gộp current location + mẫu (loại bỏ trùng tz)
+    final locations = {
+      _selectedLocation.tz: _selectedLocation,
+      for (var loc in sampleLocations) loc.tz: loc,
+    }.values.toList();
     // report dialog
     void showIncidentReportDialog(BuildContext context) {
       String? tempFeeling;
@@ -700,7 +757,7 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
                             DropdownButtonHideUnderline(
                               child: DropdownButton<LocationModel>(
                                 dropdownColor: Colors.black87,
-                                elevation: 0, // loại bỏ bóng
+                                elevation: 0,
                                 value: _selectedLocation,
                                 icon: const Icon(
                                   Icons.keyboard_arrow_down,
@@ -710,26 +767,26 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
                                   return DropdownMenuItem<LocationModel>(
                                     value: loc,
                                     child: Text(
-                                      loc.name, // ✅ thay vì loc['name']
+                                      loc.name,
                                       style: const TextStyle(
                                         fontFamily: 'Inter',
                                         fontSize: 18,
-                                        color: Colors.white,
                                         fontWeight: FontWeight.w600,
+                                        color:Colors.white
                                       ),
                                     ),
                                   );
                                 }).toList(),
                                 onChanged: (val) {
-                                  if (val == null) return;
-                                  setState(() {
-                                    _selectedLocation = val;
-                                  });
-                                  widget.onLocationChange(
-                                    val.lat, // ✅ thay vì val['lat']
-                                    val.lon, // ✅ thay vì val['lon']
-                                    val.tz,  // ✅ thay vì val['tz']
-                                  );
+                                  if (val != null) {
+                                    setState(() {
+                                      _selectedLocation =
+                                          val;
+                                    });
+                                    widget.onLocationChange(
+                                      val,
+                                    );
+                                  }
                                 },
                               ),
                             ),

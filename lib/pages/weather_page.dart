@@ -1,4 +1,3 @@
-// lib/pages/weather_page.dart
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -6,9 +5,9 @@ import '../pages/detail_weather_page.dart';
 import '../utils/location_helper.dart';
 import '../models/location_model.dart';
 
-
 class WeatherPage extends StatefulWidget {
   const WeatherPage({super.key});
+
   @override
   State<WeatherPage> createState() => _WeatherPageState();
 }
@@ -18,24 +17,31 @@ class _WeatherPageState extends State<WeatherPage> {
   bool _loading = true;
   String? _error;
 
-  double? latitude;
-  double? longitude;
-  String timezone = 'auto';
+  late LocationModel _currentLocation;   // ✅ giữ 1 object cố định
+  LocationModel? _selectedLocation; // ✅ giữ location đang chọn
 
   @override
   void initState() {
     super.initState();
-    _initLocationAndFetch(); // ✅ lấy vị trí trước khi fetch
+    _initLocationAndFetch();
   }
 
   Future<void> _initLocationAndFetch() async {
     try {
       final pos = await LocationHelper.determinePosition();
+      final current = LocationModel(
+        name: "Vị trí hiện tại",
+        lat: pos.latitude,
+        lon: pos.longitude,
+        tz: "auto", // để API tự detect timezone
+      );
+
       setState(() {
-        latitude = pos.latitude;
-        longitude = pos.longitude;
+        _currentLocation = current;
+        _selectedLocation = current;
       });
-      await fetchWeather();
+
+      await fetchWeather(current);
     } catch (e) {
       setState(() {
         _error = 'Không lấy được vị trí: $e';
@@ -44,32 +50,21 @@ class _WeatherPageState extends State<WeatherPage> {
     }
   }
 
-  void updateLocation(double lat, double lon, String tz) {
-    setState(() {
-      latitude = lat;
-      longitude = lon;
-      timezone = tz;
-    });
-    fetchWeather();
-  }
-
-  Future<void> fetchWeather() async {
-    if (latitude == null || longitude == null) {
-      return; // chưa có vị trí thì bỏ qua
-    }
-
+  Future<void> fetchWeather(LocationModel location) async {
     setState(() {
       _loading = true;
       _error = null;
     });
+
     try {
       final uri = Uri.parse(
         'https://api.open-meteo.com/v1/forecast'
-            '?latitude=$latitude&longitude=$longitude'
+            '?latitude=${location.lat}&longitude=${location.lon}'
             '&hourly=temperature_2m,precipitation,weathercode,windspeed_10m'
             '&daily=temperature_2m_max,temperature_2m_min,weathercode'
-            '&timezone=$timezone',
+            '&timezone=${location.tz}',
       );
+
       final res = await http.get(uri);
       if (res.statusCode == 200) {
         final Map<String, dynamic> data = json.decode(res.body);
@@ -96,11 +91,19 @@ class _WeatherPageState extends State<WeatherPage> {
     }
   }
 
+  void updateLocation(LocationModel location) {
+    setState(() {
+      _selectedLocation = location;
+    });
+    fetchWeather(location);
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
+
     if (_error != null) {
       return Scaffold(
         appBar: AppBar(title: const Text('Weather')),
@@ -117,7 +120,7 @@ class _WeatherPageState extends State<WeatherPage> {
                 ),
                 const SizedBox(height: 12),
                 ElevatedButton(
-                  onPressed: _initLocationAndFetch, // ✅ thử lại cả vị trí + fetch
+                  onPressed: _initLocationAndFetch,
                   child: const Text('Thử lại'),
                 ),
               ],
@@ -126,20 +129,18 @@ class _WeatherPageState extends State<WeatherPage> {
         ),
       );
     }
-    if (weatherData == null) {
+
+    if (weatherData == null || _selectedLocation == null) {
       return const Scaffold(
         body: Center(child: Text('Không có dữ liệu thời tiết')),
       );
     }
+
     return DetailWeatherPage(
       weatherData: weatherData!,
+      currentLocation: _currentLocation,       // ✅ giữ cố định
+      selectedLocation: _selectedLocation!,    // ✅ location đang chọn
       onLocationChange: updateLocation,
-      currentLocation: LocationModel(
-        name: "Vị trí hiện tại",
-        lat: latitude!,
-        lon: longitude!,
-        tz: timezone,
-      ),
     );
   }
 }
