@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import '../pages/weather_page.dart';
+import '../pages/open_map.dart';
 
 class AppRoutes {
   static const home = '/';
+  static const String map = '/map';
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
@@ -10,6 +12,8 @@ class AppRoutes {
         return MaterialPageRoute(
           builder: (_) => const WeatherPage(),
         );
+      case map:
+        return MaterialPageRoute(builder: (_) => const CurrentLocationMapLibre());
 
       default:
         return _errorRoute("No route defined for ${settings.name}");

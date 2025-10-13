@@ -17,8 +17,8 @@ class _WeatherPageState extends State<WeatherPage> {
   bool _loading = true;
   String? _error;
 
-  late LocationModel _currentLocation;   // ✅ giữ 1 object cố định
-  LocationModel? _selectedLocation; // ✅ giữ location đang chọn
+  late LocationModel _currentLocation;   // giữ 1 object cố định
+  LocationModel? _selectedLocation; // giữ location đang chọn
 
   @override
   void initState() {

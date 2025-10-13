@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
+import '../routes/app_routes.dart';
 import '../constant/text.dart';
 import 'package:weather_animation/weather_animation.dart';
 import '../models/location_model.dart';
@@ -43,6 +44,7 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
       LocationModel(name: 'Tokyo', lat: 35.6895, lon: 139.6917, tz: 'Asia/Tokyo'),
       LocationModel(name: 'Sydney', lat: -33.8688, lon: 151.2093, tz: 'Australia/Sydney'),
       LocationModel(name: 'Paris', lat: 48.8566, lon: 2.3522, tz: 'Europe/Paris'),
+      LocationModel(name: "Open map", lat: 0, lon: 0, tz: 'chooseFromMap')
     ];
 
     // luôn giữ currentLocation
@@ -228,51 +230,8 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
         }
       }
     }
-    // Danh sách location mẫu
-    final sampleLocations = <LocationModel>[
-      LocationModel(
-        name: 'Bangkok',
-        lat: 13.7563,
-        lon: 100.5018,
-        tz: 'Asia/Bangkok',
-      ),
-      LocationModel(
-        name: 'New York',
-        lat: 40.7128,
-        lon: -74.0060,
-        tz: 'America/New_York',
-      ),
-      LocationModel(
-        name: 'London',
-        lat: 51.5074,
-        lon: -0.1278,
-        tz: 'Europe/London',
-      ),
-      LocationModel(
-        name: 'Tokyo',
-        lat: 35.6895,
-        lon: 139.6917,
-        tz: 'Asia/Tokyo',
-      ),
-      LocationModel(
-        name: 'Sydney',
-        lat: -33.8688,
-        lon: 151.2093,
-        tz: 'Australia/Sydney',
-      ),
-      LocationModel(
-        name: 'Paris',
-        lat: 48.8566,
-        lon: 2.3522,
-        tz: 'Europe/Paris',
-      ),
-    ];
 
-    // Gộp current location + mẫu (loại bỏ trùng tz)
-    final locations = {
-      _selectedLocation.tz: _selectedLocation,
-      for (var loc in sampleLocations) loc.tz: loc,
-    }.values.toList();
+
     // report dialog
     void showIncidentReportDialog(BuildContext context) {
       String? tempFeeling;
@@ -778,14 +737,15 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
                                   );
                                 }).toList(),
                                 onChanged: (val) {
-                                  if (val != null) {
+                                  if (val!.tz == null) return;
+                                  if (val.tz == "chooseFromMap") {
+                                    Navigator.pushNamed(context, AppRoutes.map);
+                                  }
+                                  else {
                                     setState(() {
-                                      _selectedLocation =
-                                          val;
+                                      _selectedLocation = val;
                                     });
-                                    widget.onLocationChange(
-                                      val,
-                                    );
+                                    widget.onLocationChange(val);
                                   }
                                 },
                               ),
