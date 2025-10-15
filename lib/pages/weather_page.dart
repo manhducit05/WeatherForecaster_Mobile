@@ -30,7 +30,7 @@ class _WeatherPageState extends State<WeatherPage> {
     try {
       final pos = await LocationHelper.determinePosition();
       final current = LocationModel(
-        name: "Vị trí hiện tại",
+        name: "Current Location",
         lat: pos.latitude,
         lon: pos.longitude,
         tz: "auto", // để API tự detect timezone
@@ -44,7 +44,7 @@ class _WeatherPageState extends State<WeatherPage> {
       await fetchWeather(current);
     } catch (e) {
       setState(() {
-        _error = 'Không lấy được vị trí: $e';
+        _error = 'Location not found: $e';
         _loading = false;
       });
     }
@@ -121,7 +121,7 @@ class _WeatherPageState extends State<WeatherPage> {
                 const SizedBox(height: 12),
                 ElevatedButton(
                   onPressed: _initLocationAndFetch,
-                  child: const Text('Thử lại'),
+                  child: const Text('Try again'),
                 ),
               ],
             ),
@@ -132,14 +132,14 @@ class _WeatherPageState extends State<WeatherPage> {
 
     if (weatherData == null || _selectedLocation == null) {
       return const Scaffold(
-        body: Center(child: Text('Không có dữ liệu thời tiết')),
+        body: Center(child: Text('No weather data available')),
       );
     }
 
     return DetailWeatherPage(
       weatherData: weatherData!,
-      currentLocation: _currentLocation,       // ✅ giữ cố định
-      selectedLocation: _selectedLocation!,    // ✅ location đang chọn
+      currentLocation: _currentLocation,
+      selectedLocation: _selectedLocation!,
       onLocationChange: updateLocation,
     );
   }
