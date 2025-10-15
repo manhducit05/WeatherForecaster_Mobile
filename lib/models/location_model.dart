@@ -18,7 +18,7 @@ class LocationModel {
               runtimeType == other.runtimeType &&
               lat == other.lat &&
               lon == other.lon &&
-              tz == other.tz; // ✅ so sánh theo nhiều field
+              tz == other.tz; // so sánh theo nhiều field
 
   @override
   int get hashCode => lat.hashCode ^ lon.hashCode ^ tz.hashCode;

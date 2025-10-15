@@ -737,8 +737,7 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
                                   );
                                 }).toList(),
                                 onChanged: (val) {
-                                  if (val!.tz == null) return;
-                                  if (val.tz == "chooseFromMap") {
+                                  if (val!.tz == "chooseFromMap") {
                                     Navigator.pushNamed(context, AppRoutes.map);
                                   }
                                   else {

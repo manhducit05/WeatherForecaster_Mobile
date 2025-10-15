@@ -13,7 +13,7 @@ class AppRoutes {
           builder: (_) => const WeatherPage(),
         );
       case map:
-        return MaterialPageRoute(builder: (_) => const CurrentLocationOSM());
+        return MaterialPageRoute(builder: (_) => const OpenMapPage());
 
       default:
         return _errorRoute("No route defined for ${settings.name}");

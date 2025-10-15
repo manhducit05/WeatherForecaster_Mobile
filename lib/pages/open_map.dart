@@ -1,98 +1,129 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
-import 'package:weather_forecaster/utils/location_helper.dart'; // Đường dẫn đúng
-import 'package:geocoding/geocoding.dart';
+import 'package:maplibre_gl/maplibre_gl.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart'; // để search địa chỉ
+import '../utils/location_helper.dart';
 
+class OpenMapPage extends StatefulWidget {
+  const OpenMapPage({super.key});
 
-class CurrentLocationOSM extends StatefulWidget {
-  const CurrentLocationOSM({super.key});
   @override
-  State<CurrentLocationOSM> createState() => _CurrentLocationOSMState();
+  State<OpenMapPage> createState() => _OpenMapPageState();
 }
 
-class _CurrentLocationOSMState extends State<CurrentLocationOSM> {
-  LatLng? _currentLatLng;
+class _OpenMapPageState extends State<OpenMapPage> {
+  late MapLibreMapController mapController;
   final TextEditingController _searchController = TextEditingController();
-  final MapController _mapController = MapController();
-  @override
-  void initState() {
-    super.initState();
-    _loadLocation();
+
+  // chỉ dùng style OpenMap.vn
+  final String mapStyle = "https://tiles.openmap.vn/styles/day-v1/style.json";
+
+  void _onMapCreated(MapLibreMapController controller) {
+    mapController = controller;
   }
 
-  Future<void> _loadLocation() async {
+  // Lấy vị trí hiện tại và di chuyển camera
+  Future<void> _goToCurrentLocation() async {
     try {
-      final pos = await LocationHelper.determinePosition();
-      setState(() {
-        _currentLatLng = LatLng(pos.latitude, pos.longitude);
-      });
+      Position pos = await LocationHelper.determinePosition();
+      mapController.animateCamera(
+        CameraUpdate.newLatLngZoom(
+          LatLng(pos.latitude, pos.longitude),
+          15.0,
+        ),
+      );
     } catch (e) {
-      debugPrint("Lỗi lấy vị trí: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Không lấy được vị trí: $e")),
+        );
+      }
     }
   }
-  Future<void> _searchAndGo(String address) async {
+
+  // Tìm kiếm địa chỉ và di chuyển map
+  Future<void> _searchLocation() async {
+    String query = _searchController.text.trim();
+    if (query.isEmpty) return;
+
     try {
-      List<Location> locations = await locationFromAddress(address);
+      List<Location> locations = await locationFromAddress(query);
       if (locations.isNotEmpty) {
-        final LatLng target = LatLng(locations.first.latitude, locations.first.longitude);
-
-        debugPrint("Địa điểm tìm thấy: $target");
-
-        _mapController.move(target, 14.0);
-
-        setState(() {
-          _currentLatLng = target;
-        });
+        final loc = locations.first;
+        mapController.animateCamera(
+          CameraUpdate.newLatLngZoom(
+            LatLng(loc.latitude, loc.longitude),
+            15.0,
+          ),
+        );
       } else {
-        debugPrint("Không tìm thấy địa chỉ nào cho: $address");
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Không tìm thấy địa điểm")),
+          );
+        }
       }
     } catch (e) {
-      debugPrint("Không tìm thấy địa chỉ: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Lỗi tìm kiếm: $e")),
+        );
+      }
     }
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: TextField(
-          controller: _searchController,
-          decoration: const InputDecoration(
-            hintText: "Nhập địa điểm...",
-            border: InputBorder.none,
-          ),
-          textInputAction: TextInputAction.search,
-          onSubmitted: _searchAndGo,
-        ),
-      ),
-      body: _currentLatLng == null
-          ? const Center(child: CircularProgressIndicator())
-          : FlutterMap(
-        mapController: _mapController,
-        options: MapOptions(
-          initialCenter: _currentLatLng!, // đúng với flutter_map
-          initialZoom: 15,
-        ),
-        children: [
-          TileLayer(
-            urlTemplate: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-            userAgentPackageName: "com.example.weather_forecaster",
-          ),
-          MarkerLayer(
-            markers: [
-              Marker(
-                point: _currentLatLng!,
-                width: 80,
-                height: 80,
-                child: const Icon(
-                  Icons.location_on,
-                  color: Colors.red,
-                  size: 40,
-                ),
-              ),
-            ],
+        title: const Text("OpenMap.vn"),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.my_location),
+            tooltip: "Chuyển đến vị trí hiện tại",
+            onPressed: _goToCurrentLocation,
           ),
         ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(56),
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      hintText: "Nhập địa điểm...",
+                      filled: true,
+                      fillColor: Colors.white,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onSubmitted: (_) => _searchLocation(),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: const Icon(Icons.search),
+                  onPressed: _searchLocation,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      body: MapLibreMap(
+        styleString: mapStyle,
+        onMapCreated: _onMapCreated,
+        initialCameraPosition: const CameraPosition(
+          target: LatLng(21.03842, 105.834106), // Hà Nội
+          zoom: 12.0,
+        ),
+        compassEnabled: true,
+        myLocationEnabled: true,
       ),
     );
   }
