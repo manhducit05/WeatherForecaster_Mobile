@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:weather_forecaster/utils/storage_helper.dart';
 import 'routes/app_routes.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -11,6 +12,7 @@ void main() async {
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
+  await StorageHelper.init();
   runApp(
     ScreenUtilInit(
       designSize: const Size(1080, 2400), // kích thước thiết kế gốc

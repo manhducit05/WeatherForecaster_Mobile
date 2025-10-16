@@ -1,13 +1,17 @@
+import '../routes/app_routes.dart';
+import '../constant/text.dart';
+import '../models/location_model.dart';
+// thu vien
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
-import '../routes/app_routes.dart';
-import '../constant/text.dart';
 import 'package:weather_animation/weather_animation.dart';
-import '../models/location_model.dart';
+
+
+import '../utils/storage_helper.dart';
 
 class DetailWeatherPage extends StatefulWidget {
   final Map<String, dynamic> weatherData;
@@ -27,40 +31,70 @@ class DetailWeatherPage extends StatefulWidget {
 
 class _DetailWeatherPage extends State<DetailWeatherPage> {
   // Biến giữ location đang chọn
-  late List<LocationModel> _locations;
+  List<LocationModel> _locations = [];
   late LocationModel _selectedLocation;
   @override
   void initState() {
     super.initState();
-
     _selectedLocation = widget.selectedLocation;
-    _buildLocations(); // build danh sách ban đầu
-  }
-  void _buildLocations() {
-    final sampleLocations = <LocationModel>[
-      LocationModel(name: 'Bangkok', lat: 13.7563, lon: 100.5018, tz: 'Asia/Bangkok'),
-      LocationModel(name: 'New York', lat: 40.7128, lon: -74.0060, tz: 'America/New_York'),
-      LocationModel(name: 'London', lat: 51.5074, lon: -0.1278, tz: 'Europe/London'),
-      LocationModel(name: 'Tokyo', lat: 35.6895, lon: 139.6917, tz: 'Asia/Tokyo'),
-      LocationModel(name: 'Sydney', lat: -33.8688, lon: 151.2093, tz: 'Australia/Sydney'),
-      LocationModel(name: 'Paris', lat: 48.8566, lon: 2.3522, tz: 'Europe/Paris'),
-      LocationModel(name: "Open map", lat: 0, lon: 0, tz: 'chooseFromMap')
-    ];
-
-    // luôn giữ currentLocation
     _locations = [widget.currentLocation];
+    _loadAndBuildLocations();
+  }
 
-    // add sample (loại bỏ trùng current)
-    _locations.addAll(
-      sampleLocations.where((loc) => loc.tz != widget.currentLocation.tz),
-    );
+  Future<List<LocationModel>> loadLocationsData() async {
+    final List<dynamic> data = await StorageHelper.readLocations();
+    return data
+        .map(
+          (item) => LocationModel(
+            name: item['name'],
+            lat: (item['lat'] as num).toDouble(),
+            lon: (item['lon'] as num).toDouble(),
+            tz: item['tz'],
+          ),
+        )
+        .toList();
+  }
 
-    // nếu selected khác current và chưa có thì add thêm
-    if (_selectedLocation.tz != widget.currentLocation.tz &&
-        !_locations.any((loc) => loc.tz == _selectedLocation.tz)) {
-      _locations.add(_selectedLocation);
+  Future<void> _loadAndBuildLocations() async {
+    final sampleLocations = await loadLocationsData();
+
+    // 1. Dùng Set để track unique key dựa trên lat+lon
+    final Set<String> addedKeys = {};
+
+    // 2. Danh sách kết quả
+    final List<LocationModel> newLocations = [];
+
+    String makeKey(LocationModel loc) => "${loc.lat},${loc.lon}";
+
+    // --- A. Add current location ---
+    final currentLocation = widget.currentLocation;
+    final currentKey = makeKey(currentLocation);
+    newLocations.add(currentLocation);
+    addedKeys.add(currentKey);
+
+    // --- B. Add selected location ---
+    final selectedLocation = _selectedLocation;
+    final selectedKey = makeKey(selectedLocation);
+    if (addedKeys.add(selectedKey)) {
+      newLocations.add(selectedLocation);
+    }
+
+    // --- C. Add sample locations ---
+    for (final loc in sampleLocations) {
+      final key = makeKey(loc);
+      if (addedKeys.add(key)) {
+        newLocations.add(loc);
+      }
+    }
+
+    // --- D. Update state ---
+    if (mounted) {
+      setState(() {
+        _locations = newLocations;
+      });
     }
   }
+
   // Xử lý chênh lệch múi giờ => DateTime hiện tại của thành phố được chọn
   int get _utcOffsetSeconds {
     return widget.weatherData['utc_offset_seconds'] ?? 0;
@@ -231,7 +265,6 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
       }
     }
 
-
     // report dialog
     void showIncidentReportDialog(BuildContext context) {
       String? tempFeeling;
@@ -309,7 +342,7 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
 
                       const SizedBox(height: 20),
 
-                      // ✅ 2. Weather condition
+                      // 2. Weather condition
                       const Text(
                         "Current weather condition",
                         style: TextStyle(fontWeight: FontWeight.w600),
@@ -339,7 +372,7 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
 
                       const SizedBox(height: 20),
 
-                      // ✅ 3. Additional comments
+                      // 3. Additional comments
                       const Text(
                         "Additional comments",
                         style: TextStyle(fontWeight: FontWeight.w600),
@@ -714,40 +747,70 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
                             const Icon(Icons.location_on, color: Colors.white),
                             const SizedBox(width: 4),
                             DropdownButtonHideUnderline(
-                              child: DropdownButton<LocationModel>(
-                                dropdownColor: Colors.black87,
-                                elevation: 0,
-                                value: _selectedLocation,
-                                icon: const Icon(
-                                  Icons.keyboard_arrow_down,
-                                  color: Colors.white,
-                                ),
-                                items: _locations.map((loc) {
-                                  return DropdownMenuItem<LocationModel>(
-                                    value: loc,
-                                    child: Text(
-                                      loc.name,
-                                      style: const TextStyle(
-                                        fontFamily: 'Inter',
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.w600,
-                                        color:Colors.white
+                              child: _locations.isEmpty
+                                  ? const Center(
+                                      child: CircularProgressIndicator(),
+                                    )
+                                  : DropdownButton<LocationModel>(
+                                      dropdownColor: Colors.black87,
+                                      elevation: 0,
+                                      value:
+                                          _locations.contains(_selectedLocation)
+                                          ? _selectedLocation
+                                          : _locations
+                                                .first, // fallback nếu selected ko match
+                                      icon: const Icon(
+                                        Icons.keyboard_arrow_down,
+                                        color: Colors.white,
                                       ),
+                                      items: _locations.map((loc) {
+                                        return DropdownMenuItem<LocationModel>(
+                                          value: loc,
+                                          child: Text(
+                                            loc.name,
+                                            style: const TextStyle(
+                                              fontFamily: 'Inter',
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        );
+                                      }).toList(),
+                                      onChanged: (val) async {
+                                        if (val == null) return;
+
+                                        if (val.tz == "chooseFromMap") {
+                                          // Mở trang bản đồ
+                                          final result =
+                                              await Navigator.pushNamed(
+                                                context,
+                                                AppRoutes.map,
+                                              );
+
+                                          if (result == true) {
+                                            // Nếu đã lưu vị trí mới => reload lại dữ liệu
+                                            final locations =
+                                                await StorageHelper.loadLocations();
+                                            setState(() {
+                                              _selectedLocation =
+                                                  locations[locations.length -
+                                                      2]; // chọn luôn vị trí vừa thêm
+                                              _locations =
+                                                  locations; // update danh sách
+                                            });
+                                            widget.onLocationChange(
+                                              _selectedLocation
+                                            );
+                                          }
+                                        } else {
+                                          setState(() {
+                                            _selectedLocation = val;
+                                          });
+                                          widget.onLocationChange(val);
+                                        }
+                                      },
                                     ),
-                                  );
-                                }).toList(),
-                                onChanged: (val) {
-                                  if (val!.tz == "chooseFromMap") {
-                                    Navigator.pushNamed(context, AppRoutes.map);
-                                  }
-                                  else {
-                                    setState(() {
-                                      _selectedLocation = val;
-                                    });
-                                    widget.onLocationChange(val);
-                                  }
-                                },
-                              ),
                             ),
                           ],
                         ),

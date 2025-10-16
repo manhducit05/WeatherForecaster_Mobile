@@ -17,12 +17,12 @@ class LocationModel {
           other is LocationModel &&
               runtimeType == other.runtimeType &&
               lat == other.lat &&
-              lon == other.lon &&
-              tz == other.tz; // so sánh theo nhiều field
+              lon == other.lon; // so sánh theo tọa độ
 
   @override
-  int get hashCode => lat.hashCode ^ lon.hashCode ^ tz.hashCode;
+  int get hashCode => lat.hashCode ^ lon.hashCode;
 
   @override
-  String toString() => 'LocationModel(name: $name, lat: $lat, lon: $lon, tz: $tz)';
+  String toString() =>
+      'LocationModel(name: $name, lat: $lat, lon: $lon, tz: $tz)';
 }

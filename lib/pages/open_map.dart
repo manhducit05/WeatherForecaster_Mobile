@@ -7,6 +7,8 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter/services.dart';
 
+import '../utils/storage_helper.dart';
+
 class OpenMapPage extends StatefulWidget {
   const OpenMapPage({super.key});
 
@@ -18,23 +20,25 @@ class _OpenMapPageState extends State<OpenMapPage> {
   late MapLibreMapController mapController;
   final TextEditingController _searchController = TextEditingController();
   Symbol? _currentSymbol;
-  Map<String, dynamic>? _weatherData;
 
   final String mapStyle = "https://tiles.openmap.vn/styles/day-v1/style.json";
 
-  void _onMapCreated(MapLibreMapController controller) async { // Thêm 'async'
+  bool _hasSaved = false; // <-- thêm biến này
+
+  void _onMapCreated(MapLibreMapController controller) async {
     mapController = controller;
 
-    // 💡 FIX: Tải icon từ local asset và đặt tên là "custom-marker"
+    // Tải icon từ local asset và đặt tên là "custom-marker"
     try {
-      final ByteData bytes = await rootBundle.load("assets/images/markup_icon.png");
+      final ByteData bytes = await rootBundle.load(
+        "assets/images/markup_icon.png",
+      );
       final Uint8List list = bytes.buffer.asUint8List();
       // Tải hình ảnh vào map controller với ID mới
       await mapController.addImage("custom-marker", list);
     } catch (e) {
       debugPrint("Error loading icon: $e");
     }
-
 
     // Lắng nghe khi nhấn vào Symbol
     mapController.onSymbolTapped.add((symbol) {
@@ -67,7 +71,7 @@ class _OpenMapPageState extends State<OpenMapPage> {
           children: [
             ListTile(
               leading: const Icon(Icons.cloud),
-              title: const Text("Xem thời tiết"),
+              title: const Text("Weather Forecast"),
               onTap: () async {
                 Navigator.pop(ctx);
                 final lat = symbol.options.geometry!.latitude;
@@ -79,8 +83,72 @@ class _OpenMapPageState extends State<OpenMapPage> {
               },
             ),
             ListTile(
+              leading: const Icon(Icons.save),
+              title: const Text("Add to saved locations"),
+              onTap: () async {
+                Navigator.pop(ctx);
+
+                final lat = symbol.options.geometry!.latitude;
+                final lon = symbol.options.geometry!.longitude;
+
+                final nameController = TextEditingController();
+
+                final result = await showDialog<String>(
+                  context: context,
+                  builder: (context) {
+                    return AlertDialog(
+                      title: const Text("Đặt tên địa điểm"),
+                      content: TextField(
+                        controller: nameController,
+                        decoration: const InputDecoration(
+                          hintText: "Nhập tên địa điểm",
+                        ),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context), // cancel
+                          child: const Text("Hủy"),
+                        ),
+                        ElevatedButton(
+                          onPressed: () {
+                            final name = nameController.text.trim();
+                            if (name.isNotEmpty) {
+                              Navigator.pop(context, name);
+                            } else {
+                              Navigator.pop(
+                                context,
+                                "Custom Point (${lat.toStringAsFixed(3)}, ${lon.toStringAsFixed(3)})",
+                              );
+                            }
+                          },
+                          child: const Text("Lưu"),
+                        ),
+                      ],
+                    );
+                  },
+                );
+
+                if (result != null) {
+                  final newLoc = {
+                    "name": result,
+                    "lat": lat,
+                    "lon": lon,
+                    "tz": "auto",
+                  };
+                  await StorageHelper.addLocation(newLoc);
+                  _hasSaved = true; // đánh dấu đã lưu
+
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text("Đã lưu địa điểm: $result")),
+                    );
+                  }
+                }
+              },
+            ),
+            ListTile(
               leading: const Icon(Icons.delete),
-              title: const Text("Xóa điểm này"),
+              title: const Text("Delete point"),
               onTap: () async {
                 Navigator.pop(ctx);
                 await mapController.removeSymbol(symbol);
@@ -92,6 +160,8 @@ class _OpenMapPageState extends State<OpenMapPage> {
       },
     );
   }
+
+  // dialog thời tiết 7 ngày
   Future<void> _showWeatherDialog(Map<String, dynamic> data) async {
     final daily = data["daily"];
     final times = List<String>.from(daily["time"]);
@@ -117,11 +187,11 @@ class _OpenMapPageState extends State<OpenMapPage> {
                     color: Colors.blueAccent,
                   ),
                   title: Text(
-                    "${times[index]}",
+                    times[index],
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   subtitle: Text(
-                    "$status\Max: ${maxTemps[index]}°C  |  Min: ${minTemps[index]}°C",
+                    "$status\nMax: ${maxTemps[index]}°C  |  Min: ${minTemps[index]}°C",
                   ),
                 );
               },
@@ -138,7 +208,7 @@ class _OpenMapPageState extends State<OpenMapPage> {
     );
   }
 
-// Phân loại trạng thái thời tiết
+  // Phân loại trạng thái thời tiết
   String _mapWeatherText(int code) {
     if (code == 0) return "Clear sky";
     if ([1, 2].contains(code)) return "Partly cloudy";
@@ -150,7 +220,7 @@ class _OpenMapPageState extends State<OpenMapPage> {
     return "Unknown";
   }
 
-// Thêm icon tương ứng cho đẹp hơn
+  // Thêm icon tương ứng cho đẹp hơn
   IconData _mapWeatherIcon(int code) {
     if (code == 0) return Icons.wb_sunny;
     if ([1, 2, 3].contains(code)) return Icons.cloud;
@@ -161,15 +231,17 @@ class _OpenMapPageState extends State<OpenMapPage> {
     return Icons.help_outline;
   }
 
-
   Future<void> _goToCurrentLocation() async {
     try {
+      //lấy vị trí hiện tại từ hàm helper
       Position pos = await LocationHelper.determinePosition();
+      //di chuyển camera đến vị trí, độ zoom 15
       mapController.animateCamera(
         CameraUpdate.newLatLngZoom(LatLng(pos.latitude, pos.longitude), 15.0),
       );
 
       await _addMarker(pos.latitude, pos.longitude);
+      //thông báo nếu có lỗi
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -184,6 +256,7 @@ class _OpenMapPageState extends State<OpenMapPage> {
     if (query.isEmpty) return;
 
     try {
+      // Gọi geocoding API để chuyển "tên địa điểm" thành tọa độ (lat, lng)
       List<Location> locations = await locationFromAddress(query);
       if (locations.isNotEmpty) {
         final loc = locations.first;
@@ -194,9 +267,9 @@ class _OpenMapPageState extends State<OpenMapPage> {
         await _addMarker(loc.latitude, loc.longitude);
       } else {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Location not found")),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text("Location not found")));
         }
       }
     } catch (e) {
@@ -235,6 +308,13 @@ class _OpenMapPageState extends State<OpenMapPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text("OpenMap.vn"),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            Navigator.pop(context, _hasSaved);
+            // nếu đã lưu => true, nếu không => false
+          },
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.my_location),
