@@ -5,20 +5,21 @@ class LocationHelper {
   static Future<Position> determinePosition() async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      throw Exception('Dịch vụ vị trí chưa bật.');
+      throw Exception('Location service is not enabled.');
     }
 
     LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
-        throw Exception('Người dùng từ chối quyền vị trí.');
+        throw Exception('The user denied location permission.');
       }
     }
 
     if (permission == LocationPermission.deniedForever) {
       throw Exception(
-          'Quyền vị trí bị từ chối vĩnh viễn. Hãy cấp quyền trong cài đặt.');
+        'Location permission was permanently denied. Please grant permission in settings.',
+      );
     }
 
     return await Geolocator.getCurrentPosition(

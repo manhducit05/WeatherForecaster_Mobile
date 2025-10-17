@@ -97,17 +97,17 @@ class _OpenMapPageState extends State<OpenMapPage> {
                   context: context,
                   builder: (context) {
                     return AlertDialog(
-                      title: const Text("Đặt tên địa điểm"),
+                      title: const Text("Name the location."),
                       content: TextField(
                         controller: nameController,
                         decoration: const InputDecoration(
-                          hintText: "Nhập tên địa điểm",
+                          hintText: "Name the location",
                         ),
                       ),
                       actions: [
                         TextButton(
                           onPressed: () => Navigator.pop(context), // cancel
-                          child: const Text("Hủy"),
+                          child: const Text("Cancel"),
                         ),
                         ElevatedButton(
                           onPressed: () {
@@ -121,7 +121,7 @@ class _OpenMapPageState extends State<OpenMapPage> {
                               );
                             }
                           },
-                          child: const Text("Lưu"),
+                          child: const Text("Save"),
                         ),
                       ],
                     );
@@ -140,7 +140,7 @@ class _OpenMapPageState extends State<OpenMapPage> {
 
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text("Đã lưu địa điểm: $result")),
+                      SnackBar(content: Text("Location saved.: $result")),
                     );
                   }
                 }
