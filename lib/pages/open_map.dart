@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:geocoding/geocoding.dart';
 import '../utils/location_helper.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter/services.dart';
-
 import '../utils/storage_helper.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class OpenMapPage extends StatefulWidget {
   const OpenMapPage({super.key});
@@ -20,6 +19,7 @@ class _OpenMapPageState extends State<OpenMapPage> {
   late MapLibreMapController mapController;
   final TextEditingController _searchController = TextEditingController();
   Symbol? _currentSymbol;
+  bool showSuggestions = true;
 
   final String mapStyle = "https://tiles.openmap.vn/styles/day-v1/style.json";
 
@@ -57,7 +57,7 @@ class _OpenMapPageState extends State<OpenMapPage> {
       SymbolOptions(
         geometry: LatLng(lat, lon),
         iconImage: "custom-marker",
-        iconSize: 0.5,
+        iconSize: 0.005,
       ),
     );
   }
@@ -251,33 +251,50 @@ class _OpenMapPageState extends State<OpenMapPage> {
     }
   }
 
-  Future<void> _searchLocation() async {
-    String query = _searchController.text.trim();
-    if (query.isEmpty) return;
-
+  Future<void> _searchLocation(String placeId) async {
     try {
-      // Gọi geocoding API để chuyển "tên địa điểm" thành tọa độ (lat, lng)
-      List<Location> locations = await locationFromAddress(query);
-      if (locations.isNotEmpty) {
-        final loc = locations.first;
-        mapController.animateCamera(
-          CameraUpdate.newLatLngZoom(LatLng(loc.latitude, loc.longitude), 15.0),
-        );
+      final apiKey = dotenv.env['API_KEY'];
+      final url =
+          "https://mapapis.openmap.vn/v1/place?ids=$placeId&apiKey=$apiKey";
 
-        await _addMarker(loc.latitude, loc.longitude);
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text("Location not found")));
+      final res = await http.get(Uri.parse(url));
+      if (res.statusCode == 200) {
+        final data = json.decode(res.body);
+
+        if (data['features'] != null && data['features'].isNotEmpty) {
+          final feature = data['features'][0];
+          final coords = feature['geometry']['coordinates'];
+          final name = feature['properties']['name'];
+
+          final lon = coords[0];
+          final lat = coords[1];
+          final target = LatLng(lat, lon);
+
+          // Move camera
+          await mapController.animateCamera(
+            CameraUpdate.newLatLngZoom(target, 15),
+          );
+
+          // Clear symbols cũ và add symbol mới
+          await mapController.clearSymbols();
+          await mapController.addSymbol(
+            SymbolOptions(
+              geometry: target,
+              iconImage: "custom-marker",
+              textField: name,
+              textOffset: const Offset(0, 1.5),
+            ),
+          );
+
+          debugPrint("Moved to $name ($lat, $lon)");
+        } else {
+          debugPrint("Không tìm thấy chi tiết cho placeId: $placeId");
         }
+      } else {
+        debugPrint("API error: ${res.statusCode}");
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("Search error: $e")));
-      }
+      debugPrint("searchLocationById error: $e");
     }
   }
 
@@ -303,6 +320,36 @@ class _OpenMapPageState extends State<OpenMapPage> {
     }
   }
 
+  Future<List<Map<String, dynamic>>> fetchSuggestions(String query) async {
+    if (query.trim().isEmpty) return [];
+    final apiKey = dotenv.env['API_KEY'];
+    final encoded = Uri.encodeQueryComponent(query.trim());
+    final url =
+        "https://mapapis.openmap.vn/v1/autocomplete?text=$encoded"
+        "&size=5&apiKey=$apiKey";
+
+    try {
+      final res = await http.get(Uri.parse(url));
+      if (res.statusCode == 200) {
+        final data = json.decode(res.body) as Map<String, dynamic>;
+        final features = data["features"] as List<dynamic>? ?? [];
+        // mỗi feature có 'properties' -> lấy thẳng properties
+        return features
+            .map(
+              (f) =>
+                  (f as Map<String, dynamic>)["properties"]
+                      as Map<String, dynamic>,
+            )
+            .toList();
+      } else {
+        debugPrint("Autocomplete API status: ${res.statusCode}");
+      }
+    } catch (e) {
+      debugPrint("Autocomplete error: $e");
+    }
+    return [];
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -322,13 +369,29 @@ class _OpenMapPageState extends State<OpenMapPage> {
             onPressed: _goToCurrentLocation,
           ),
         ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(56),
-          child: Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Row(
+      ),
+      body: Stack(
+        children: [
+          MapLibreMap(
+            styleString: mapStyle,
+            onMapCreated: _onMapCreated,
+            initialCameraPosition: const CameraPosition(
+              target: LatLng(21.03842, 105.834106), // Hà Nội
+              zoom: 12.0,
+            ),
+            compassEnabled: true,
+            myLocationEnabled: true,
+          ),
+          // --- Search box + suggestions ---
+          Positioned(
+            top: 16,
+            left: 16,
+            right: 16,
+            child: Column(
               children: [
-                Expanded(
+                Material(
+                  elevation: 4,
+                  borderRadius: BorderRadius.circular(12),
                   child: TextField(
                     controller: _searchController,
                     decoration: InputDecoration(
@@ -340,30 +403,80 @@ class _OpenMapPageState extends State<OpenMapPage> {
                       ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      suffixIcon: IconButton(
+                        icon: const Icon(Icons.search),
+                        onPressed:(){},
                       ),
                     ),
-                    onSubmitted: (_) => _searchLocation(),
+                      onChanged: (val) {
+                        setState(() {
+                          showSuggestions = val.trim().isNotEmpty;
+                        });},
+
                   ),
                 ),
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: const Icon(Icons.search),
-                  onPressed: _searchLocation,
+
+                // Suggestions
+                Builder(
+                  builder: (context) {
+                    final query = _searchController.text.trim();
+                    if (!showSuggestions || query.isEmpty) return const SizedBox.shrink();
+                    return FutureBuilder<List<Map<String, dynamic>>>(
+                      future: fetchSuggestions(query),
+                      builder: (context, snapshot) {
+                        if (!snapshot.hasData) return const SizedBox.shrink();
+                        final suggestions = snapshot.data!;
+                        if (suggestions.isEmpty) return const SizedBox.shrink();
+
+                        return Container(
+                          margin: const EdgeInsets.only(top: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(8),
+                            boxShadow: [
+                              BoxShadow(blurRadius: 4, color: Colors.black12),
+                            ],
+                          ),
+                          constraints: const BoxConstraints(maxHeight: 200),
+                          child: ListView.builder(
+                            shrinkWrap: true,
+                            itemCount: suggestions.length,
+                            itemBuilder: (ctx, index) {
+                              final s = suggestions[index];
+                              final name = s["name"] as String? ?? "";
+                              final label = s["label"] as String? ?? "";
+                              final placeId = s["id"] as String? ?? "";
+                              return ListTile(
+                                title: Text(name),
+                                subtitle: Text(label),
+
+                                onTap: () async {
+                                  FocusScope.of(context).unfocus();
+                                  _searchController.text = name;
+                                  setState(() {
+                                    showSuggestions = false; // ẩn gợi ý
+                                  });
+
+                                  // gọi search luôn
+                                  await _searchLocation(placeId);
+                                  debugPrint(
+                                    "Selected place id: $placeId, name: $name",
+                                  );
+                                },
+                              );
+                            },
+                          ),
+                        );
+                      },
+                    );
+                  },
                 ),
               ],
             ),
           ),
-        ),
-      ),
-      body: MapLibreMap(
-        styleString: mapStyle,
-        onMapCreated: _onMapCreated,
-        initialCameraPosition: const CameraPosition(
-          target: LatLng(21.03842, 105.834106), // Hà Nội
-          zoom: 12.0,
-        ),
-        compassEnabled: true,
-        myLocationEnabled: true,
+        ],
       ),
     );
   }

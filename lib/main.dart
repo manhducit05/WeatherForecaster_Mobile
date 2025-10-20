@@ -3,7 +3,7 @@ import 'package:weather_forecaster/utils/storage_helper.dart';
 import 'routes/app_routes.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -13,6 +13,7 @@ void main() async {
     DeviceOrientation.portraitDown,
   ]);
   await StorageHelper.init();
+  await dotenv.load(fileName: ".env");
   runApp(
     ScreenUtilInit(
       designSize: const Size(1080, 2400), // kích thước thiết kế gốc
