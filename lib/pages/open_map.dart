@@ -42,7 +42,8 @@ class _OpenMapPageState extends State<OpenMapPage> {
 
     // Lắng nghe khi nhấn vào Symbol
     mapController.onSymbolTapped.add((symbol) {
-      _showMarkerMenu(symbol);
+      final placeId = symbol.data?["placeId"]; // lấy lại id đã lưu
+      _showMarkerMenu(symbol, placeId: placeId);
     });
   }
 
@@ -63,12 +64,28 @@ class _OpenMapPageState extends State<OpenMapPage> {
   }
 
   // Hiện menu khi click marker
-  void _showMarkerMenu(Symbol symbol) {
+  void _showMarkerMenu(Symbol symbol, {String? placeId}) {
     showModalBottomSheet(
       context: context,
       builder: (ctx) {
         return Wrap(
           children: [
+            if (placeId != null)
+              ListTile(
+                leading: const Icon(Icons.info_outline),
+                title: const Text("Show place info"),
+                onTap: () async {
+                  Navigator.pop(ctx);
+                  final placeData = await _fetchPlaceDetail(placeId);
+                  if (placeData != null && mounted) {
+                    _showPlaceInfoDialog(placeData);
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("No info available")),
+                    );
+                  }
+                },
+              ),
             ListTile(
               leading: const Icon(Icons.cloud),
               title: const Text("Weather Forecast"),
@@ -140,7 +157,7 @@ class _OpenMapPageState extends State<OpenMapPage> {
 
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text("Location saved.: $result")),
+                      SnackBar(content: Text("Location saved: $result")),
                     );
                   }
                 }
@@ -276,8 +293,11 @@ class _OpenMapPageState extends State<OpenMapPage> {
           );
 
           // Clear symbols cũ và add symbol mới
+          // Clear symbols cũ và add symbol mới
           await mapController.clearSymbols();
-          await mapController.addSymbol(
+
+          // Gán lại _currentSymbol bằng symbol vừa tạo
+          _currentSymbol = await mapController.addSymbol(
             SymbolOptions(
               geometry: target,
               iconImage: "custom-marker",
@@ -286,6 +306,19 @@ class _OpenMapPageState extends State<OpenMapPage> {
             ),
           );
 
+          // Khi tạo marker, lưu luôn placeId vào symbol.data
+          _currentSymbol = await mapController.addSymbol(
+            SymbolOptions(
+              geometry: target,
+              iconImage: "custom-marker",
+              textField: name,
+              textOffset: const Offset(0, 1.5),
+            ),
+            {'placeId': placeId}, // <--- gán thêm metadata tại đây
+          );
+
+          // Sau đó hiển thị menu
+          _showMarkerMenu(_currentSymbol!, placeId: placeId);
           debugPrint("Moved to $name ($lat, $lon)");
         } else {
           debugPrint("Không tìm thấy chi tiết cho placeId: $placeId");
@@ -350,6 +383,181 @@ class _OpenMapPageState extends State<OpenMapPage> {
     return [];
   }
 
+  // hàm format giờ đóng-mở cửa của địa điểm
+  String _formatOpeningHours(List<dynamic> hours) {
+    final days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    final buffer = StringBuffer();
+
+    for (int i = 0; i < hours.length && i < days.length; i++) {
+      final pair = hours[i];
+      if (pair is List && pair.length == 2) {
+        final open = pair[0];
+        final close = pair[1];
+        if (open is List && close is List) {
+          final o =
+              "${open[1].toString().padLeft(2, '0')}:${open[2].toString().padLeft(2, '0')}";
+          final c =
+              "${close[1].toString().padLeft(2, '0')}:${close[2].toString().padLeft(2, '0')}";
+          buffer.writeln("${days[i]}: $o - $c");
+        }
+      }
+    }
+    return buffer.toString().trim();
+  }
+
+  // show dialog hiển thị location detail
+  void _showPlaceInfoDialog(Map<String, dynamic> place) {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          elevation: 8,
+          backgroundColor: Colors.white,
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Tên địa điểm
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.place, color: Colors.blueAccent, size: 28),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          place["name"] ?? "Unknown place",
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  if (place["label"] != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      place["label"],
+                      style: const TextStyle(color: Colors.grey, fontSize: 13),
+                    ),
+                  ],
+
+                  const SizedBox(height: 16),
+                  const Divider(),
+
+                  // Thông tin chi tiết
+                  if (place["phone"] != null)
+                    _infoRow(Icons.phone, place["phone"], color: Colors.green),
+
+                  if (place["website"] != null)
+                    _infoRow(Icons.language, place["website"], color: Colors.blueAccent),
+
+                  if (place["street"] != null)
+                    _infoRow(Icons.location_on, place["street"], color: Colors.redAccent),
+
+                  const Divider(height: 24),
+
+                  if (place["opening_hours_v2"] != null)
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          "Opening hours",
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[100],
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            _formatOpeningHours(place["opening_hours_v2"]),
+                            style: const TextStyle(fontSize: 15, height: 1.4),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                  const SizedBox(height: 20),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: ElevatedButton.icon(
+                      onPressed: () => Navigator.pop(ctx),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blueAccent,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      icon: const Icon(Icons.close, size: 18),
+                      label: const Text("Close"),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Widget hiển thị 1 dòng thông tin có icon và text
+  Widget _infoRow(IconData icon, String text, {Color color = Colors.black54}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(fontSize: 14),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+
+  // hàm fetch để lấy location detail
+  Future<Map<String, dynamic>?> _fetchPlaceDetail(String placeId) async {
+    try {
+      final apiKey = dotenv.env['API_KEY'];
+      final url =
+          "https://mapapis.openmap.vn/v1/place?ids=$placeId&apiKey=$apiKey";
+      final res = await http.get(Uri.parse(url));
+
+      if (res.statusCode == 200) {
+        final data = json.decode(res.body);
+        if (data["features"] != null && data["features"].isNotEmpty) {
+          return data["features"][0]["properties"];
+        }
+      } else {
+        debugPrint("Fetch place detail failed: ${res.statusCode}");
+      }
+    } catch (e) {
+      debugPrint("Error fetching place detail: $e");
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -407,14 +615,14 @@ class _OpenMapPageState extends State<OpenMapPage> {
                       ),
                       suffixIcon: IconButton(
                         icon: const Icon(Icons.search),
-                        onPressed:(){},
+                        onPressed: () {},
                       ),
                     ),
-                      onChanged: (val) {
-                        setState(() {
-                          showSuggestions = val.trim().isNotEmpty;
-                        });},
-
+                    onChanged: (val) {
+                      setState(() {
+                        showSuggestions = val.trim().isNotEmpty;
+                      });
+                    },
                   ),
                 ),
 
@@ -422,7 +630,9 @@ class _OpenMapPageState extends State<OpenMapPage> {
                 Builder(
                   builder: (context) {
                     final query = _searchController.text.trim();
-                    if (!showSuggestions || query.isEmpty) return const SizedBox.shrink();
+                    if (!showSuggestions || query.isEmpty) {
+                      return const SizedBox.shrink();
+                    }
                     return FutureBuilder<List<Map<String, dynamic>>>(
                       future: fetchSuggestions(query),
                       builder: (context, snapshot) {
