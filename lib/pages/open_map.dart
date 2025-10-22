@@ -10,7 +10,6 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class OpenMapPage extends StatefulWidget {
   const OpenMapPage({super.key});
-
   @override
   State<OpenMapPage> createState() => _OpenMapPageState();
 }
@@ -20,9 +19,7 @@ class _OpenMapPageState extends State<OpenMapPage> {
   final TextEditingController _searchController = TextEditingController();
   Symbol? _currentSymbol;
   bool showSuggestions = true;
-
   final String mapStyle = "https://tiles.openmap.vn/styles/day-v1/style.json";
-
   bool _hasSaved = false; // <-- thêm biến này
 
   void _onMapCreated(MapLibreMapController controller) async {
@@ -293,7 +290,6 @@ class _OpenMapPageState extends State<OpenMapPage> {
           );
 
           // Clear symbols cũ và add symbol mới
-          // Clear symbols cũ và add symbol mới
           await mapController.clearSymbols();
 
           // Gán lại _currentSymbol bằng symbol vừa tạo
@@ -384,16 +380,24 @@ class _OpenMapPageState extends State<OpenMapPage> {
   }
 
   // hàm format giờ đóng-mở cửa của địa điểm
-  String _formatOpeningHours(List<dynamic> hours) {
+  String _formatOpeningHours(List<dynamic>? hours) {
+    if (hours == null || hours.isEmpty) {
+      return "No opening hours info available";
+    }
+
     final days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
     final buffer = StringBuffer();
 
     for (int i = 0; i < hours.length && i < days.length; i++) {
       final pair = hours[i];
+
+      // Kiểm tra cấu trúc đúng dạng [open, close]
       if (pair is List && pair.length == 2) {
         final open = pair[0];
         final close = pair[1];
-        if (open is List && close is List) {
+
+        // Kiểm tra xem open/close có phải List và đủ phần tử
+        if (open is List && open.length >= 3 && close is List && close.length >= 3) {
           final o =
               "${open[1].toString().padLeft(2, '0')}:${open[2].toString().padLeft(2, '0')}";
           final c =
@@ -402,6 +406,11 @@ class _OpenMapPageState extends State<OpenMapPage> {
         }
       }
     }
+    // Nếu buffer rỗng (tức là không parse được dòng nào)
+    if (buffer.isEmpty) {
+      return "No opening hours info available";
+    }
+
     return buffer.toString().trim();
   }
 
@@ -453,6 +462,7 @@ class _OpenMapPageState extends State<OpenMapPage> {
                   const Divider(),
 
                   // Thông tin chi tiết
+
                   if (place["phone"] != null)
                     _infoRow(Icons.phone, place["phone"], color: Colors.green),
 
@@ -461,7 +471,24 @@ class _OpenMapPageState extends State<OpenMapPage> {
 
                   if (place["street"] != null)
                     _infoRow(Icons.location_on, place["street"], color: Colors.redAccent),
-
+                  if (place["lat"] != null && place["lon"] != null)
+                    _infoRow(
+                      Icons.map_outlined,
+                      "WGS84: ${place["lat"]}, ${place["lon"]}",
+                      color: Colors.indigo,
+                    ),
+                  if (place["forcodes"] != null)
+                    _infoRow(
+                      Icons.qr_code,
+                      "Forcodes: ${place["forcodes"]}",
+                      color: Colors.orange,
+                    ),
+                  if (place["zipcode"] != null)
+                    _infoRow(
+                      Icons.local_post_office,
+                      "Zipcode: ${place["zipcode"]}",
+                      color: Colors.teal,
+                    ),
                   const Divider(height: 24),
 
                   if (place["opening_hours_v2"] != null)
@@ -540,14 +567,39 @@ class _OpenMapPageState extends State<OpenMapPage> {
   Future<Map<String, dynamic>?> _fetchPlaceDetail(String placeId) async {
     try {
       final apiKey = dotenv.env['API_KEY'];
-      final url =
-          "https://mapapis.openmap.vn/v1/place?ids=$placeId&apiKey=$apiKey";
+      final url = "https://mapapis.openmap.vn/v1/place?ids=$placeId&apiKey=$apiKey";
       final res = await http.get(Uri.parse(url));
 
       if (res.statusCode == 200) {
         final data = json.decode(res.body);
-        if (data["features"] != null && data["features"].isNotEmpty) {
-          return data["features"][0]["properties"];
+
+        // Kiểm tra kỹ trước khi truy cập index
+        final features = data["features"];
+        if (features is List && features.isNotEmpty) {
+          final first = features.first;
+
+          if (first is Map) {
+            final props = first["properties"] ?? {};
+            final geometry = first["geometry"] ?? {};
+
+            // Nếu có toạ độ hợp lệ, thêm vào properties
+            if (geometry["coordinates"] is List &&
+                geometry["coordinates"].length == 2) {
+              props["lat"] = geometry["coordinates"][1];
+              props["lon"] = geometry["coordinates"][0];
+            }
+
+            // Gộp lại để sau có thể truyền nguyên map này vào _showPlaceInfoDialog()
+            return {
+              ...props,
+              "geometry": geometry,
+            };
+          }
+            else {
+            debugPrint("features[0] không có properties");
+          }
+        } else {
+          debugPrint("Không có features cho placeId: $placeId");
         }
       } else {
         debugPrint("Fetch place detail failed: ${res.statusCode}");
