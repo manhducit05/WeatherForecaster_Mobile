@@ -7,6 +7,7 @@ import 'dart:convert';
 import 'package:flutter/services.dart';
 import '../utils/storage_helper.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import '../widgets/direction_route_dialog_widget.dart';
 
 class OpenMapPage extends StatefulWidget {
   const OpenMapPage({super.key});
@@ -20,7 +21,7 @@ class _OpenMapPageState extends State<OpenMapPage> {
   Symbol? _currentSymbol;
   bool showSuggestions = true;
   final String mapStyle = "https://tiles.openmap.vn/styles/day-v1/style.json";
-  bool _hasSaved = false; // <-- thêm biến này
+  bool _hasSaved = false;
 
   void _onMapCreated(MapLibreMapController controller) async {
     mapController = controller;
@@ -83,6 +84,38 @@ class _OpenMapPageState extends State<OpenMapPage> {
                   }
                 },
               ),
+            ListTile(
+              leading: const Icon(Icons.directions),
+              title: const Text("Get Directions to here"),
+              onTap: () async {
+                Navigator.pop(ctx);
+
+                final dest = LatLng(
+                  symbol.options.geometry!.latitude,
+                  symbol.options.geometry!.longitude,
+                );
+
+                // Lấy tên địa điểm từ marker (textField)
+                final destName = symbol.options.textField ?? "Địa điểm đã chọn";
+
+                final result = await showDialog(
+                  context: context,
+                  builder: (_) => DirectionRouteDialog(
+                    defaultDestination: dest,
+                    defaultDestinationName: destName,
+                  ),
+                );
+
+                if (result != null) {
+                  final from = result['from'];
+                  final to = result['to'];
+
+                  debugPrint("From: ${from.latitude}, ${from.longitude}");
+                  debugPrint("To: ${to.latitude}, ${to.longitude}");
+
+                }
+              },
+            ),
             ListTile(
               leading: const Icon(Icons.cloud),
               title: const Text("Weather Forecast"),
@@ -397,7 +430,10 @@ class _OpenMapPageState extends State<OpenMapPage> {
         final close = pair[1];
 
         // Kiểm tra xem open/close có phải List và đủ phần tử
-        if (open is List && open.length >= 3 && close is List && close.length >= 3) {
+        if (open is List &&
+            open.length >= 3 &&
+            close is List &&
+            close.length >= 3) {
           final o =
               "${open[1].toString().padLeft(2, '0')}:${open[2].toString().padLeft(2, '0')}";
           final c =
@@ -436,7 +472,11 @@ class _OpenMapPageState extends State<OpenMapPage> {
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.place, color: Colors.blueAccent, size: 28),
+                      const Icon(
+                        Icons.place,
+                        color: Colors.blueAccent,
+                        size: 28,
+                      ),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
@@ -462,15 +502,22 @@ class _OpenMapPageState extends State<OpenMapPage> {
                   const Divider(),
 
                   // Thông tin chi tiết
-
                   if (place["phone"] != null)
                     _infoRow(Icons.phone, place["phone"], color: Colors.green),
 
                   if (place["website"] != null)
-                    _infoRow(Icons.language, place["website"], color: Colors.blueAccent),
+                    _infoRow(
+                      Icons.language,
+                      place["website"],
+                      color: Colors.blueAccent,
+                    ),
 
                   if (place["street"] != null)
-                    _infoRow(Icons.location_on, place["street"], color: Colors.redAccent),
+                    _infoRow(
+                      Icons.location_on,
+                      place["street"],
+                      color: Colors.redAccent,
+                    ),
                   if (place["lat"] != null && place["lon"] != null)
                     _infoRow(
                       Icons.map_outlined,
@@ -542,6 +589,7 @@ class _OpenMapPageState extends State<OpenMapPage> {
       },
     );
   }
+  // dialog chi duong
 
   /// Widget hiển thị 1 dòng thông tin có icon và text
   Widget _infoRow(IconData icon, String text, {Color color = Colors.black54}) {
@@ -551,23 +599,18 @@ class _OpenMapPageState extends State<OpenMapPage> {
         children: [
           Icon(icon, color: color, size: 18),
           const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              text,
-              style: const TextStyle(fontSize: 14),
-            ),
-          ),
+          Expanded(child: Text(text, style: const TextStyle(fontSize: 14))),
         ],
       ),
     );
   }
 
-
   // hàm fetch để lấy location detail
   Future<Map<String, dynamic>?> _fetchPlaceDetail(String placeId) async {
     try {
       final apiKey = dotenv.env['API_KEY'];
-      final url = "https://mapapis.openmap.vn/v1/place?ids=$placeId&apiKey=$apiKey";
+      final url =
+          "https://mapapis.openmap.vn/v1/place?ids=$placeId&apiKey=$apiKey";
       final res = await http.get(Uri.parse(url));
 
       if (res.statusCode == 200) {
@@ -590,12 +633,8 @@ class _OpenMapPageState extends State<OpenMapPage> {
             }
 
             // Gộp lại để sau có thể truyền nguyên map này vào _showPlaceInfoDialog()
-            return {
-              ...props,
-              "geometry": geometry,
-            };
-          }
-            else {
+            return {...props, "geometry": geometry};
+          } else {
             debugPrint("features[0] không có properties");
           }
         } else {
@@ -623,6 +662,25 @@ class _OpenMapPageState extends State<OpenMapPage> {
           },
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.directions),
+            tooltip: "Chỉ đường",
+            onPressed: () async {
+              // Mở hộp thoại nhập điểm xuất phát và điểm đến
+              final result = await showDialog(
+                context: context,
+                builder: (_) => const DirectionRouteDialog(),
+              );
+              // Khi người dùng nhấn “Xác nhận”
+              if (result != null) {
+                final from = result["from"];
+                final to = result["to"];
+                debugPrint("From: $from | To: $to");
+
+                // TODO: sau này xử lý phần vẽ đường ở đây
+              }
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.my_location),
             tooltip: "Go to current location",
