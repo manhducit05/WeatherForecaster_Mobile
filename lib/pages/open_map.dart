@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 import 'package:geolocator/geolocator.dart';
-import '../utils/location_helper.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-import 'package:flutter/services.dart';
-import '../utils/storage_helper.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:http/http.dart' as http;
+import 'package:flutter/services.dart';
+
+import 'dart:convert';
+import '../utils/storage_helper.dart';
+import '../utils/location_helper.dart';
 import '../widgets/direction_route_dialog_widget.dart';
+import '../utils/map_helper.dart';
 
 class OpenMapPage extends StatefulWidget {
   const OpenMapPage({super.key});
@@ -23,26 +25,35 @@ class _OpenMapPageState extends State<OpenMapPage> {
   final String mapStyle = "https://tiles.openmap.vn/styles/day-v1/style.json";
   bool _hasSaved = false;
 
+  bool _styleLoaded = false; // 🔹 Khai báo biến bị thiếu
+
   void _onMapCreated(MapLibreMapController controller) async {
     mapController = controller;
+    debugPrint("Map created");
 
-    // Tải icon từ local asset và đặt tên là "custom-marker"
+    // giữ nguyên listener symbol tap
+    mapController.onSymbolTapped.add((symbol) {
+      final placeId = symbol.data?["placeId"];
+      _showMarkerMenu(symbol, placeId: placeId);
+    });
+  }
+
+  Future<void> _onStyleLoaded() async {
+    if (!mounted) return;
+    _styleLoaded = true;
+    debugPrint("🗺️ onStyleLoaded fired");
+
+    // Load image AFTER style loaded — an toàn hơn
     try {
       final ByteData bytes = await rootBundle.load(
         "assets/images/markup_icon.png",
       );
       final Uint8List list = bytes.buffer.asUint8List();
-      // Tải hình ảnh vào map controller với ID mới
       await mapController.addImage("custom-marker", list);
+      debugPrint("custom-marker added after style loaded");
     } catch (e) {
-      debugPrint("Error loading icon: $e");
+      debugPrint("addImage failed in _onStyleLoaded: $e");
     }
-
-    // Lắng nghe khi nhấn vào Symbol
-    mapController.onSymbolTapped.add((symbol) {
-      final placeId = symbol.data?["placeId"]; // lấy lại id đã lưu
-      _showMarkerMenu(symbol, placeId: placeId);
-    });
   }
 
   Future<void> _addMarker(double lat, double lon) async {
@@ -84,6 +95,7 @@ class _OpenMapPageState extends State<OpenMapPage> {
                   }
                 },
               ),
+            // Khi click marker -> Get Directions
             ListTile(
               leading: const Icon(Icons.directions),
               title: const Text("Get Directions to here"),
@@ -94,9 +106,8 @@ class _OpenMapPageState extends State<OpenMapPage> {
                   symbol.options.geometry!.latitude,
                   symbol.options.geometry!.longitude,
                 );
-
-                // Lấy tên địa điểm từ marker (textField)
-                final destName = symbol.options.textField ?? "Địa điểm đã chọn";
+                final destName =
+                    symbol.options.textField ?? "Selected location";
 
                 final result = await showDialog(
                   context: context,
@@ -106,26 +117,75 @@ class _OpenMapPageState extends State<OpenMapPage> {
                   ),
                 );
 
-                if (result != null) {
-                  final from = result['from'];
-                  final to = result['to'];
+                if (result == null) return;
 
-                  debugPrint("From: ${from.latitude}, ${from.longitude}");
-                  debugPrint("To: ${to.latitude}, ${to.longitude}");
+                final from = result['from'] as LatLng;
+                final to = result['to'] as LatLng;
 
+                // Đảm bảo style đã load
+                if (!_styleLoaded) {
+                  await Future.delayed(const Duration(milliseconds: 300));
                 }
+                final vehicle = result['vehicle'] ?? 'car';
+                // Lấy route
+                List<LatLng> routePoints = await MapHelper.fetchDirection(
+                  startLat: from.latitude,
+                  startLng: from.longitude,
+                  endLat: to.latitude,
+                  endLng: to.longitude,
+                  vehicle: vehicle,
+                );
+
+                debugPrint("Route points count: ${routePoints.length}");
+                if (routePoints.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Không thể tìm được hướng đi"),
+                    ),
+                  );
+                  return;
+                }
+
+                // Vẽ route
+                await MapHelper.drawRouteOnMap(mapController, routePoints);
+
+                // Zoom bao trùm
+                await mapController.animateCamera(
+                  CameraUpdate.newLatLngBounds(
+                    _boundsFromLatLngList(routePoints),
+                    left: 50,
+                    right: 50,
+                    top: 100,
+                    bottom: 100,
+                  ),
+                );
+
+                // Thêm marker đầu-cuối
+                await mapController.addSymbol(
+                  SymbolOptions(
+                    geometry: to,
+                    iconImage: "custom-marker",
+                    iconSize: 0.005,
+                  ),
+                );
               },
             ),
             ListTile(
               leading: const Icon(Icons.cloud),
-              title: const Text("Weather Forecast"),
+              title: const Text("7-day weather forecast"),
               onTap: () async {
-                Navigator.pop(ctx);
+                Navigator.pop(ctx); // đóng bottom sheet
+
                 final lat = symbol.options.geometry!.latitude;
                 final lon = symbol.options.geometry!.longitude;
-                final data = await _fetchWeather(lat, lon);
-                if (data != null && mounted) {
-                  _showWeatherDialog(data);
+
+                final weatherData = await _fetchWeather(lat, lon);
+                if (weatherData != null && mounted) {
+                  _showWeatherDialog(weatherData);
+                } else if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Unable to fetch weather data")),
+                  );
                 }
               },
             ),
@@ -649,6 +709,25 @@ class _OpenMapPageState extends State<OpenMapPage> {
     return null;
   }
 
+  LatLngBounds _boundsFromLatLngList(List<LatLng> list) {
+    double? x0, x1, y0, y1;
+    for (final latLng in list) {
+      if (x0 == null) {
+        x0 = x1 = latLng.latitude;
+        y0 = y1 = latLng.longitude;
+      } else {
+        if (latLng.latitude > x1!) x1 = latLng.latitude;
+        if (latLng.latitude < x0) x0 = latLng.latitude;
+        if (latLng.longitude > y1!) y1 = latLng.longitude;
+        if (latLng.longitude < y0!) y0 = latLng.longitude;
+      }
+    }
+    return LatLngBounds(
+      southwest: LatLng(x0!, y0!),
+      northeast: LatLng(x1!, y1!),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -666,19 +745,59 @@ class _OpenMapPageState extends State<OpenMapPage> {
             icon: const Icon(Icons.directions),
             tooltip: "Chỉ đường",
             onPressed: () async {
-              // Mở hộp thoại nhập điểm xuất phát và điểm đến
               final result = await showDialog(
                 context: context,
                 builder: (_) => const DirectionRouteDialog(),
               );
-              // Khi người dùng nhấn “Xác nhận”
-              if (result != null) {
-                final from = result["from"];
-                final to = result["to"];
-                debugPrint("From: $from | To: $to");
+              if (result == null) return;
 
-                // TODO: sau này xử lý phần vẽ đường ở đây
+              final from = result["from"] as LatLng;
+              final to = result["to"] as LatLng;
+
+              if (!_styleLoaded) {
+                await Future.delayed(const Duration(milliseconds: 300));
               }
+
+              final vehicle =
+                  result['vehicle'] ??
+                  'car'; // 👈 lấy từ dialog, fallback = car
+
+              List<LatLng> routePoints = await MapHelper.fetchDirection(
+                startLat: from.latitude,
+                startLng: from.longitude,
+                endLat: to.latitude,
+                endLng: to.longitude,
+                vehicle: vehicle,
+              );
+
+              debugPrint("Route points count: ${routePoints.length}");
+              if (routePoints.isEmpty) return;
+
+              await MapHelper.drawRouteOnMap(mapController, routePoints);
+              await mapController.animateCamera(
+                CameraUpdate.newLatLngBounds(
+                  _boundsFromLatLngList(routePoints),
+                  left: 50,
+                  right: 50,
+                  top: 100,
+                  bottom: 100,
+                ),
+              );
+
+              await mapController.addSymbol(
+                SymbolOptions(
+                  geometry: from,
+                  iconImage: "custom-marker",
+                  iconSize: 0.005,
+                ),
+              );
+              await mapController.addSymbol(
+                SymbolOptions(
+                  geometry: to,
+                  iconImage: "custom-marker",
+                  iconSize: 0.005,
+                ),
+              );
             },
           ),
           IconButton(
@@ -693,6 +812,7 @@ class _OpenMapPageState extends State<OpenMapPage> {
           MapLibreMap(
             styleString: mapStyle,
             onMapCreated: _onMapCreated,
+            onStyleLoadedCallback: _onStyleLoaded, // <-- thêm vào đây
             initialCameraPosition: const CameraPosition(
               target: LatLng(21.03842, 105.834106), // Hà Nội
               zoom: 12.0,

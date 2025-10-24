@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 import '../utils/map_helper.dart';
-import '../utils/polyline_decoder.dart';
+
 
 class DirectionRouteDialog extends StatefulWidget {
   final LatLng? defaultDestination;
@@ -219,7 +219,7 @@ class _DirectionRouteDialogState extends State<DirectionRouteDialog> {
           final geometry = features.first["geometry"];
           if (geometry != null && geometry["coordinates"] != null) {
             final coords = geometry["coordinates"] as List;
-            // ⚠️ [lon, lat]
+            // [lon, lat]
             return LatLng(coords[1].toDouble(), coords[0].toDouble());
           }
         }
@@ -311,17 +311,17 @@ class _DirectionRouteDialogState extends State<DirectionRouteDialog> {
                     "Fetching direction from (${_fromLatLng!.latitude}, ${_fromLatLng!.longitude}) "
                     "to (${_toLatLng!.latitude}, ${_toLatLng!.longitude}) | vehicle: $vehicle",
                   );
-                  final routeData = await fetchDirection(
-                    originLat: _fromLatLng!.latitude,
-                    originLon: _fromLatLng!.longitude,
-                    destLat: _toLatLng!.latitude,
-                    destLon: _toLatLng!.longitude,
-                    vehicle: vehicle,
+                  final points = await MapHelper.fetchDirection(
+                    startLat: _fromLatLng!.latitude,
+                    startLng: _fromLatLng!.longitude,
+                    endLat: _toLatLng!.latitude,
+                    endLng: _toLatLng!.longitude,
+                    vehicle: vehicle
                   );
 
                   setState(() => isLoadingRoute = false);
 
-                  if (routeData == null) {
+                  if (points.isEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text("Không tìm thấy tuyến đường"),
@@ -330,13 +330,9 @@ class _DirectionRouteDialogState extends State<DirectionRouteDialog> {
                     return;
                   }
 
-                  final polylineStr = routeData["overview_polyline"]["points"];
-                  final coords = decodePolyline(polylineStr);
-
-                  // trả kết quả về cho OpenMapPage
+                  // Trả kết quả về cho OpenMapPage để vẽ route
                   Navigator.pop(context, {
-                    "route": routeData,
-                    "points": coords,
+                    "points": points,
                     "from": _fromLatLng,
                     "to": _toLatLng,
                   });
