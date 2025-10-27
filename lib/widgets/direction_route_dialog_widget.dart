@@ -5,7 +5,6 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 import '../utils/map_helper.dart';
 
-
 class DirectionRouteDialog extends StatefulWidget {
   final LatLng? defaultDestination;
   final String? defaultDestinationName;
@@ -316,7 +315,7 @@ class _DirectionRouteDialogState extends State<DirectionRouteDialog> {
                     startLng: _fromLatLng!.longitude,
                     endLat: _toLatLng!.latitude,
                     endLng: _toLatLng!.longitude,
-                    vehicle: vehicle
+                    vehicle: vehicle,
                   );
 
                   setState(() => isLoadingRoute = false);
@@ -335,6 +334,7 @@ class _DirectionRouteDialogState extends State<DirectionRouteDialog> {
                     "points": points,
                     "from": _fromLatLng,
                     "to": _toLatLng,
+                    "vehicle": vehicle,
                   });
                 },
                 icon: const Icon(Icons.alt_route),

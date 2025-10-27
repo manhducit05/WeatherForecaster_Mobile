@@ -1,11 +1,13 @@
 import 'dart:convert';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:maplibre_gl/maplibre_gl.dart';
 import 'polyline_decoder.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class MapHelper {
-  static Future<List<LatLng>> fetchDirection({
+  static Future<Map<String, dynamic>> fetchDirection({
     required double startLat,
     required double startLng,
     required double endLat,
@@ -14,9 +16,8 @@ class MapHelper {
   }) async {
     final apiKey = dotenv.env['API_KEY_ROUTES'];
     final url = Uri.parse(
-        "https://mapapis.openmap.vn/v1/direction?"
-            "origin=$startLat,$startLng&destination=$endLat,$endLng"
-            "&vehicle=$vehicle&apikey=$apiKey");
+      "https://mapapis.openmap.vn/v1/direction?origin=$startLat,$startLng&destination=$endLat,$endLng&vehicle=$vehicle&apikey=$apiKey",
+    );
 
     final res = await http.get(url);
 
@@ -33,14 +34,21 @@ class MapHelper {
     final overview = data["routes"][0]["overview_polyline"]["points"];
     final routePoints = decodePolyline(overview);
 
-    print("Đã decode ${routePoints.length} điểm từ polyline");
-    return routePoints;
+    return {
+      "points": routePoints,
+      "data": data, // 👈 trả luôn toàn bộ JSON gốc
+    };
   }
 
   static Future<void> drawRouteOnMap(
-      MapLibreMapController controller, List<LatLng> points) async {
+      BuildContext context,
+      MapLibreMapController controller,
+      List<LatLng> points,
+      Map<String, dynamic> routeData,
+      void Function(BuildContext, String, String, List<dynamic>) showRouteDialog,
+      ) async {
     if (points.isEmpty) {
-      print("Không có điểm nào để vẽ");
+      debugPrint("Không có điểm nào để vẽ");
       return;
     }
 
@@ -53,7 +61,7 @@ class MapHelper {
         await controller.removeSource("route-source");
       } catch (_) {}
 
-      // 🔹 Chuẩn hóa GeoJSON (chuẩn RFC 7946)
+      // 🔹 Chuẩn hóa GeoJSON
       final geoJson = {
         "type": "FeatureCollection",
         "features": [
@@ -66,7 +74,7 @@ class MapHelper {
                   .toList(),
             },
             "properties": {},
-          }
+          },
         ],
       };
 
@@ -77,7 +85,7 @@ class MapHelper {
         "route-source",
         GeojsonSourceProperties(
           data: geoJson,
-          lineMetrics: true, // 🔹 hữu ích khi muốn animate hoặc gradient
+          lineMetrics: true,
         ),
       );
 
@@ -85,17 +93,15 @@ class MapHelper {
         "route-source",
         "route-line",
         const LineLayerProperties(
-          lineColor: "#ff0000",
-          lineWidth: 5.0,
+          lineColor: "#0080FF",
+          lineWidth: 6.0,
           lineOpacity: 0.9,
           lineJoin: "round",
           lineCap: "round",
         ),
       );
 
-      print("Route layer added!");
-
-      // 🔹 Di chuyển camera bao trùm toàn tuyến
+      // 🔹 Di chuyển camera
       final bounds = _getBounds(points);
       await controller.animateCamera(
         CameraUpdate.newLatLngBounds(
@@ -107,11 +113,45 @@ class MapHelper {
         ),
       );
 
-      print("Camera moved to route bounds");
+      debugPrint("Route layer added!");
+
+      // ✅ Hiển thị thông tin tổng hợp ngay khi vẽ xong
+      final distance = routeData["legs"][0]["distance"]["text"];
+      final duration = routeData["legs"][0]["duration"]["text"];
+      final steps = routeData["legs"][0]["steps"];
+
+      // Hiển thị một overlay nhỏ (SnackBar hoặc Card nổi)
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: Colors.white,
+          content: GestureDetector(
+            onTap: () => showRouteDialog(context, distance, duration, steps),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    "🚶 $distance - ⏱ $duration",
+                    style: const TextStyle(color: Colors.black, fontSize: 16),
+                  ),
+                ),
+                const Icon(Icons.expand_less, color: Colors.black),
+              ],
+            ),
+          ),
+          duration: const Duration(seconds: 6),
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
     } catch (e, st) {
-      print("Lỗi khi vẽ route: $e\n$st");
+      debugPrint("Lỗi khi vẽ route: $e\n$st");
     }
   }
+
 
   static LatLngBounds _getBounds(List<LatLng> points) {
     double minLat = points.first.latitude;

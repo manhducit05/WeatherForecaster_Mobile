@@ -4,6 +4,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/services.dart';
+import 'package:share_plus/share_plus.dart';
 
 import 'dart:convert';
 import '../utils/storage_helper.dart';
@@ -24,8 +25,7 @@ class _OpenMapPageState extends State<OpenMapPage> {
   bool showSuggestions = true;
   final String mapStyle = "https://tiles.openmap.vn/styles/day-v1/style.json";
   bool _hasSaved = false;
-
-  bool _styleLoaded = false; // 🔹 Khai báo biến bị thiếu
+  bool _styleLoaded = false;
 
   void _onMapCreated(MapLibreMapController controller) async {
     mapController = controller;
@@ -128,7 +128,7 @@ class _OpenMapPageState extends State<OpenMapPage> {
                 }
                 final vehicle = result['vehicle'] ?? 'car';
                 // Lấy route
-                List<LatLng> routePoints = await MapHelper.fetchDirection(
+                final directionResult = await MapHelper.fetchDirection(
                   startLat: from.latitude,
                   startLng: from.longitude,
                   endLat: to.latitude,
@@ -136,18 +136,15 @@ class _OpenMapPageState extends State<OpenMapPage> {
                   vehicle: vehicle,
                 );
 
-                debugPrint("Route points count: ${routePoints.length}");
-                if (routePoints.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text("Không thể tìm được hướng đi"),
-                    ),
-                  );
-                  return;
-                }
+                final List<LatLng> routePoints = directionResult["points"];
+                final Map<String, dynamic> data = directionResult["data"];
 
-                // Vẽ route
-                await MapHelper.drawRouteOnMap(mapController, routePoints);
+                final leg = data["routes"][0]["legs"][0];
+                final distance = leg["distance"]["text"];
+                final duration = leg["duration"]["text"];
+                final steps = leg["steps"];
+
+                _showRouteDialog(context, distance, duration, steps);
 
                 // Zoom bao trùm
                 await mapController.animateCamera(
@@ -184,7 +181,9 @@ class _OpenMapPageState extends State<OpenMapPage> {
                   _showWeatherDialog(weatherData);
                 } else if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Unable to fetch weather data")),
+                    const SnackBar(
+                      content: Text("Unable to fetch weather data"),
+                    ),
                   );
                 }
               },
@@ -263,6 +262,108 @@ class _OpenMapPageState extends State<OpenMapPage> {
               },
             ),
           ],
+        );
+      },
+    );
+  }
+
+  void _showRouteDialog(
+    BuildContext context,
+    String distance,
+    String duration,
+    List<dynamic> steps,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                height: 4,
+                width: 40,
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: Colors.grey[400],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Text(
+                "Thời gian: $duration\nQuãng đường: $distance",
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _showStepsDialog(context, steps);
+                    },
+                    icon: const Icon(Icons.directions),
+                    label: const Text("Xem chi tiết"),
+                  ),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      final text =
+                          "Tuyến đường dài $distance, thời gian di chuyển $duration.";
+                      Share.share(text);
+                    },
+                    icon: const Icon(Icons.share),
+                    label: const Text("Chia sẻ"),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showStepsDialog(BuildContext context, List<dynamic> steps) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return DraggableScrollableSheet(
+          expand: false,
+          builder: (context, scrollController) {
+            return ListView.builder(
+              controller: scrollController,
+              itemCount: steps.length,
+              itemBuilder: (context, index) {
+                final step = steps[index];
+                final instruction = step["html_instructions"] ?? "";
+                final distance = step["distance"]["text"];
+                final duration = step["duration"]["text"];
+
+                return ListTile(
+                  leading: const Icon(Icons.turn_right),
+                  title: Text(
+                    instruction.replaceAll(
+                      RegExp(r'<[^>]*>'),
+                      '',
+                    ), // bỏ tag HTML
+                  ),
+                  subtitle: Text("$distance - $duration"),
+                );
+              },
+            );
+          },
         );
       },
     );
@@ -393,17 +494,6 @@ class _OpenMapPageState extends State<OpenMapPage> {
               textField: name,
               textOffset: const Offset(0, 1.5),
             ),
-          );
-
-          // Khi tạo marker, lưu luôn placeId vào symbol.data
-          _currentSymbol = await mapController.addSymbol(
-            SymbolOptions(
-              geometry: target,
-              iconImage: "custom-marker",
-              textField: name,
-              textOffset: const Offset(0, 1.5),
-            ),
-            {'placeId': placeId}, // <--- gán thêm metadata tại đây
           );
 
           // Sau đó hiển thị menu
@@ -629,7 +719,9 @@ class _OpenMapPageState extends State<OpenMapPage> {
                   Align(
                     alignment: Alignment.centerRight,
                     child: ElevatedButton.icon(
-                      onPressed: () => Navigator.pop(ctx),
+                      onPressed: () {
+                        if (Navigator.canPop(ctx)) Navigator.pop(ctx);
+                      },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blueAccent,
                         foregroundColor: Colors.white,
@@ -758,11 +850,9 @@ class _OpenMapPageState extends State<OpenMapPage> {
                 await Future.delayed(const Duration(milliseconds: 300));
               }
 
-              final vehicle =
-                  result['vehicle'] ??
-                  'car'; // 👈 lấy từ dialog, fallback = car
+              final vehicle = result['vehicle'] ?? 'car';
 
-              List<LatLng> routePoints = await MapHelper.fetchDirection(
+              final directionResult = await MapHelper.fetchDirection(
                 startLat: from.latitude,
                 startLng: from.longitude,
                 endLat: to.latitude,
@@ -770,10 +860,18 @@ class _OpenMapPageState extends State<OpenMapPage> {
                 vehicle: vehicle,
               );
 
-              debugPrint("Route points count: ${routePoints.length}");
-              if (routePoints.isEmpty) return;
+              // lấy routePoints và data từ result
 
-              await MapHelper.drawRouteOnMap(mapController, routePoints);
+              final List<LatLng> routePoints = directionResult["points"];
+              final Map<String, dynamic> data = directionResult["data"];
+
+              final leg = data["routes"][0]["legs"][0];
+              final distance = leg["distance"]["text"];
+              final duration = leg["duration"]["text"];
+              final steps = leg["steps"];
+
+              _showRouteDialog(context, distance, duration, steps);
+
               await mapController.animateCamera(
                 CameraUpdate.newLatLngBounds(
                   _boundsFromLatLngList(routePoints),
@@ -820,6 +918,8 @@ class _OpenMapPageState extends State<OpenMapPage> {
             compassEnabled: true,
             myLocationEnabled: true,
           ),
+          // Overlay box
+
           // --- Search box + suggestions ---
           Positioned(
             top: 16,

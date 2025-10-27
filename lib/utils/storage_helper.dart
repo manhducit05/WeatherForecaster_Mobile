@@ -32,13 +32,13 @@ class StorageHelper {
     await file.writeAsString(json.encode(locations));
   }
 
-// Thêm địa điểm (luôn thêm vào áp chót, trước "Open map")
+  // Thêm địa điểm (luôn thêm vào áp chót, trước "Open map")
   static Future<void> addLocation(Map<String, dynamic> location) async {
     final list = await readLocations();
 
     // Tìm và loại bỏ "Open map" (tz == "chooseFromMap")
     final openMapItem = list.firstWhere(
-          (item) => item['tz'] == "chooseFromMap",
+      (item) => item['tz'] == "chooseFromMap",
       orElse: () => null,
     );
     list.removeWhere((item) => item['tz'] == "chooseFromMap");
@@ -54,14 +54,19 @@ class StorageHelper {
     // Ghi lại file
     await writeLocations(list);
   }
+
   // Load danh sách thành List<LocationModel>
   static Future<List<LocationModel>> loadLocations() async {
     final list = await readLocations();
-    return list.map((item) => LocationModel(
-      name: item['name'],
-      lat: (item['lat'] as num).toDouble(),
-      lon: (item['lon'] as num).toDouble(),
-      tz: item['tz'],
-    )).toList();
+    return list
+        .map(
+          (item) => LocationModel(
+            name: item['name'],
+            lat: (item['lat'] as num).toDouble(),
+            lon: (item['lon'] as num).toDouble(),
+            tz: item['tz'],
+          ),
+        )
+        .toList();
   }
 }
