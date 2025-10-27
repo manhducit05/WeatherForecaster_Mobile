@@ -41,12 +41,11 @@ class MapHelper {
   }
 
   static Future<void> drawRouteOnMap(
-      BuildContext context,
-      MapLibreMapController controller,
-      List<LatLng> points,
-      Map<String, dynamic> routeData,
-      void Function(BuildContext, String, String, List<dynamic>) showRouteDialog,
-      ) async {
+    BuildContext context,
+    MapLibreMapController controller,
+    List<LatLng> points,
+    Map<String, dynamic> routeData,
+  ) async {
     if (points.isEmpty) {
       debugPrint("Không có điểm nào để vẽ");
       return;
@@ -83,10 +82,7 @@ class MapHelper {
 
       await controller.addSource(
         "route-source",
-        GeojsonSourceProperties(
-          data: geoJson,
-          lineMetrics: true,
-        ),
+        GeojsonSourceProperties(data: geoJson, lineMetrics: true),
       );
 
       await controller.addLineLayer(
@@ -114,44 +110,10 @@ class MapHelper {
       );
 
       debugPrint("Route layer added!");
-
-      // ✅ Hiển thị thông tin tổng hợp ngay khi vẽ xong
-      final distance = routeData["legs"][0]["distance"]["text"];
-      final duration = routeData["legs"][0]["duration"]["text"];
-      final steps = routeData["legs"][0]["steps"];
-
-      // Hiển thị một overlay nhỏ (SnackBar hoặc Card nổi)
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: Colors.white,
-          content: GestureDetector(
-            onTap: () => showRouteDialog(context, distance, duration, steps),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
-                    "🚶 $distance - ⏱ $duration",
-                    style: const TextStyle(color: Colors.black, fontSize: 16),
-                  ),
-                ),
-                const Icon(Icons.expand_less, color: Colors.black),
-              ],
-            ),
-          ),
-          duration: const Duration(seconds: 6),
-          behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.all(12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      );
     } catch (e, st) {
       debugPrint("Lỗi khi vẽ route: $e\n$st");
     }
   }
-
 
   static LatLngBounds _getBounds(List<LatLng> points) {
     double minLat = points.first.latitude;

@@ -128,6 +128,7 @@ class _OpenMapPageState extends State<OpenMapPage> {
                 }
                 final vehicle = result['vehicle'] ?? 'car';
                 // Lấy route
+                // Gọi API lấy route
                 final directionResult = await MapHelper.fetchDirection(
                   startLat: from.latitude,
                   startLng: from.longitude,
@@ -137,15 +138,22 @@ class _OpenMapPageState extends State<OpenMapPage> {
                 );
 
                 final List<LatLng> routePoints = directionResult["points"];
-                final Map<String, dynamic> data = directionResult["data"];
+                final Map<String, dynamic> legData =
+                    directionResult["data"]["routes"][0]["legs"][0];
+                final distance = legData["distance"]["text"];
+                final duration = legData["duration"]["text"];
+                final steps = legData["steps"];
 
-                final leg = data["routes"][0]["legs"][0];
-                final distance = leg["distance"]["text"];
-                final duration = leg["duration"]["text"];
-                final steps = leg["steps"];
+                // Vẽ tuyến đường (overlay thông tin vẫn có nhưng không dùng callback)
+                await MapHelper.drawRouteOnMap(
+                  context,
+                  mapController,
+                  routePoints,
+                  legData,
+                );
 
+                // Hiển thị _showRouteDialog luôn
                 _showRouteDialog(context, distance, duration, steps);
-
                 // Zoom bao trùm
                 await mapController.animateCamera(
                   CameraUpdate.newLatLngBounds(
@@ -852,6 +860,7 @@ class _OpenMapPageState extends State<OpenMapPage> {
 
               final vehicle = result['vehicle'] ?? 'car';
 
+              // Gọi API lấy route
               final directionResult = await MapHelper.fetchDirection(
                 startLat: from.latitude,
                 startLng: from.longitude,
@@ -860,18 +869,23 @@ class _OpenMapPageState extends State<OpenMapPage> {
                 vehicle: vehicle,
               );
 
-              // lấy routePoints và data từ result
-
               final List<LatLng> routePoints = directionResult["points"];
-              final Map<String, dynamic> data = directionResult["data"];
+              final Map<String, dynamic> legData =
+                  directionResult["data"]["routes"][0]["legs"][0];
+              final distance = legData["distance"]["text"];
+              final duration = legData["duration"]["text"];
+              final steps = legData["steps"];
 
-              final leg = data["routes"][0]["legs"][0];
-              final distance = leg["distance"]["text"];
-              final duration = leg["duration"]["text"];
-              final steps = leg["steps"];
+              // Vẽ tuyến đường (overlay thông tin vẫn có nhưng không dùng callback)
+              await MapHelper.drawRouteOnMap(
+                context,
+                mapController,
+                routePoints,
+                legData,
+              );
 
+              // Hiển thị _showRouteDialog luôn
               _showRouteDialog(context, distance, duration, steps);
-
               await mapController.animateCamera(
                 CameraUpdate.newLatLngBounds(
                   _boundsFromLatLngList(routePoints),
