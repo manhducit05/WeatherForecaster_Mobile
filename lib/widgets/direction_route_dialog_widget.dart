@@ -307,8 +307,10 @@ class _DirectionRouteDialogState extends State<DirectionRouteDialog> {
                       : "walking";
                   // 🔹 Thêm log trước khi gọi API
                   debugPrint(
-                    "Fetching direction from (${_fromLatLng!.latitude}, ${_fromLatLng!.longitude}) "
-                    "to (${_toLatLng!.latitude}, ${_toLatLng!.longitude}) | vehicle: $vehicle",
+                    "Fetching direction from (${_fromLatLng!.latitude},"
+                    " ${_fromLatLng!.longitude}) "
+                    "to (${_toLatLng!.latitude}, ${_toLatLng!.longitude})"
+                    " | vehicle: $vehicle",
                   );
                   final points = await MapHelper.fetchDirection(
                     startLat: _fromLatLng!.latitude,
@@ -317,9 +319,7 @@ class _DirectionRouteDialogState extends State<DirectionRouteDialog> {
                     endLng: _toLatLng!.longitude,
                     vehicle: vehicle,
                   );
-
                   setState(() => isLoadingRoute = false);
-
                   if (points.isEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
@@ -328,7 +328,6 @@ class _DirectionRouteDialogState extends State<DirectionRouteDialog> {
                     );
                     return;
                   }
-
                   // Trả kết quả về cho OpenMapPage để vẽ route
                   Navigator.pop(context, {
                     "points": points,

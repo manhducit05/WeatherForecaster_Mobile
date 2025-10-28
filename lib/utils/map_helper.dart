@@ -8,7 +8,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class MapHelper {
   // ==========================================================
-  // 🔹 1. Fetch routes (lấy nhiều tuyến đường)
+  //  1. Fetch routes (lấy nhiều tuyến đường)
   // ==========================================================
   static Future<Map<String, dynamic>> fetchDirection({
     required double startLat,
@@ -40,7 +40,7 @@ class MapHelper {
   }
 
   // ==========================================================
-  // 🔹 2. Vẽ nhiều tuyến đường + tự zoom camera
+  //  2. Vẽ nhiều tuyến đường + tự zoom camera
   // ==========================================================
   static Future<void> drawRoutesOnMap(
       BuildContext context,
@@ -64,7 +64,7 @@ class MapHelper {
       List<LatLng> allPoints = [];
       List<Map<String, dynamic>> features = [];
 
-      // 🔹 Vẽ từng tuyến
+      //  Vẽ từng tuyến
       for (int i = 0; i < routes.length; i++) {
         final overview = routes[i]["overview_polyline"]["points"];
         final points = decodePolyline(overview);
@@ -88,13 +88,13 @@ class MapHelper {
         });
       }
 
-      // 🔹 Tạo GeoJSON
+      //  Tạo GeoJSON
       final geoJson = {
         "type": "FeatureCollection",
         "features": features,
       };
 
-      // 🔹 Thêm source và layer
+      //  Thêm source và layer
       await controller.addSource(
         "route-source",
         GeojsonSourceProperties(data: geoJson, lineMetrics: true),
@@ -112,7 +112,7 @@ class MapHelper {
         ),
       );
 
-      // 🔹 Tính bounds bao phủ toàn bộ route
+      //  Tính bounds bao phủ toàn bộ route
       final bounds = _getBounds(allPoints);
       await controller.animateCamera(
         CameraUpdate.newLatLngBounds(
@@ -124,14 +124,14 @@ class MapHelper {
         ),
       );
 
-      debugPrint("✅ Vẽ ${routes.length} tuyến đường thành công!");
+      debugPrint("Vẽ ${routes.length} tuyến đường thành công!");
     } catch (e, st) {
-      debugPrint("❌ Lỗi khi vẽ route: $e\n$st");
+      debugPrint("Lỗi khi vẽ route: $e\n$st");
     }
   }
 
   // ==========================================================
-  // 🔹 3. Hàm tính bounds (private)
+  //  3. Hàm tính bounds (private)
   // ==========================================================
   static LatLngBounds _getBounds(List<LatLng> points) {
     double minLat = points.first.latitude;
@@ -145,7 +145,6 @@ class MapHelper {
       if (p.longitude < minLng) minLng = p.longitude;
       if (p.longitude > maxLng) maxLng = p.longitude;
     }
-
     return LatLngBounds(
       southwest: LatLng(minLat, minLng),
       northeast: LatLng(maxLat, maxLng),

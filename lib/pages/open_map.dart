@@ -27,6 +27,10 @@ class _OpenMapPageState extends State<OpenMapPage> {
   bool _hasSaved = false;
   bool _styleLoaded = false;
 
+  String? _routeDistance;
+  String? _routeDuration;
+  List<dynamic>? _routeSteps;
+
   void _onMapCreated(MapLibreMapController controller) async {
     mapController = controller;
     debugPrint("Map created");
@@ -140,13 +144,16 @@ class _OpenMapPageState extends State<OpenMapPage> {
                 // Vẽ và auto zoom luôn
                 await MapHelper.drawRoutesOnMap(context, mapController, routes);
 
-                // Lấy dữ liệu tuyến đầu để hiển thị
                 final legData = routes[0]["legs"][0];
-                final distance = legData["distance"]["text"];
-                final duration = legData["duration"]["text"];
-                final steps = legData["steps"];
+                setState(() {
+                  _routeDistance = legData["distance"]["text"];
+                  _routeDuration = legData["duration"]["text"];
+                  _routeSteps = legData["steps"];
+                });
 
-                _showRouteDialog(context, distance, duration, steps);
+
+
+
 
                 // Thêm marker đầu-cuối
                 await mapController.addSymbol(
@@ -258,69 +265,7 @@ class _OpenMapPageState extends State<OpenMapPage> {
     );
   }
 
-  void _showRouteDialog(
-    BuildContext context,
-    String distance,
-    String duration,
-    List<dynamic> steps,
-  ) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                height: 4,
-                width: 40,
-                margin: const EdgeInsets.only(bottom: 12),
-                decoration: BoxDecoration(
-                  color: Colors.grey[400],
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              Text(
-                "Thời gian: $duration\nQuãng đường: $distance",
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      _showStepsDialog(context, steps);
-                    },
-                    icon: const Icon(Icons.directions),
-                    label: const Text("Xem chi tiết"),
-                  ),
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      final text =
-                          "Tuyến đường dài $distance, thời gian di chuyển $duration.";
-                      Share.share(text);
-                    },
-                    icon: const Icon(Icons.share),
-                    label: const Text("Chia sẻ"),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
+
 
   void _showStepsDialog(BuildContext context, List<dynamic> steps) {
     showModalBottomSheet(
@@ -841,11 +786,13 @@ class _OpenMapPageState extends State<OpenMapPage> {
 
               // Lấy dữ liệu tuyến đầu để hiển thị
               final legData = routes[0]["legs"][0];
-              final distance = legData["distance"]["text"];
-              final duration = legData["duration"]["text"];
-              final steps = legData["steps"];
 
-              _showRouteDialog(context, distance, duration, steps);
+
+              setState(() {
+                _routeDistance = legData["distance"]["text"];
+                _routeDuration = legData["duration"]["text"];
+                _routeSteps = legData["steps"];
+              });
 
               await mapController.addSymbol(
                 SymbolOptions(
@@ -884,7 +831,75 @@ class _OpenMapPageState extends State<OpenMapPage> {
             myLocationEnabled: true,
           ),
           // Overlay box
-
+          if (_routeDistance != null && _routeDuration != null)
+            DraggableScrollableSheet(
+              initialChildSize: 0.12, // khi thu nhỏ
+              minChildSize: 0.12,
+              maxChildSize: 0.5, // kéo lên hiển thị chi tiết
+              builder: (context, scrollController) {
+                return Container(
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black26,
+                        blurRadius: 10,
+                        offset: Offset(0, -2),
+                      ),
+                    ],
+                  ),
+                  child: SingleChildScrollView(
+                    controller: scrollController,
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          height: 4,
+                          width: 40,
+                          margin: const EdgeInsets.only(bottom: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[400],
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                        Text(
+                          "Thời gian: $_routeDuration\nQuãng đường: $_routeDistance",
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            ElevatedButton.icon(
+                              onPressed: () {
+                                _showStepsDialog(context, _routeSteps!);
+                              },
+                              icon: const Icon(Icons.directions),
+                              label: const Text("Xem chi tiết"),
+                            ),
+                            ElevatedButton.icon(
+                              onPressed: () {
+                                final text =
+                                    "Tuyến đường dài $_routeDistance, thời gian di chuyển $_routeDuration.";
+                                Share.share(text);
+                              },
+                              icon: const Icon(Icons.share),
+                              label: const Text("Chia sẻ"),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
           // --- Search box + suggestions ---
           Positioned(
             top: 16,

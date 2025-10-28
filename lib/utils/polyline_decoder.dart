@@ -1,5 +1,4 @@
 import 'package:maplibre_gl/maplibre_gl.dart';
-
 /// Giải mã chuỗi polyline (Google Encoded Polyline Algorithm)
 List<LatLng> decodePolyline(String encoded) {
   List<LatLng> polyline = [];
@@ -15,7 +14,6 @@ List<LatLng> decodePolyline(String encoded) {
     } while (b >= 0x20);
     int dlat = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
     lat += dlat;
-
     shift = 0;
     result = 0;
     do {
@@ -25,9 +23,7 @@ List<LatLng> decodePolyline(String encoded) {
     } while (b >= 0x20);
     int dlng = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
     lng += dlng;
-
     polyline.add(LatLng(lat / 1E5, lng / 1E5));
   }
-
   return polyline;
 }
