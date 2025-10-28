@@ -127,7 +127,6 @@ class _OpenMapPageState extends State<OpenMapPage> {
                   await Future.delayed(const Duration(milliseconds: 300));
                 }
                 final vehicle = result['vehicle'] ?? 'car';
-                // Lấy route
                 // Gọi API lấy route
                 final directionResult = await MapHelper.fetchDirection(
                   startLat: from.latitude,
@@ -136,34 +135,18 @@ class _OpenMapPageState extends State<OpenMapPage> {
                   endLng: to.longitude,
                   vehicle: vehicle,
                 );
+                final routes = directionResult["data"]["routes"];
 
-                final List<LatLng> routePoints = directionResult["points"];
-                final Map<String, dynamic> legData =
-                    directionResult["data"]["routes"][0]["legs"][0];
+                // Vẽ và auto zoom luôn
+                await MapHelper.drawRoutesOnMap(context, mapController, routes);
+
+                // Lấy dữ liệu tuyến đầu để hiển thị
+                final legData = routes[0]["legs"][0];
                 final distance = legData["distance"]["text"];
                 final duration = legData["duration"]["text"];
                 final steps = legData["steps"];
 
-                // Vẽ tuyến đường (overlay thông tin vẫn có nhưng không dùng callback)
-                await MapHelper.drawRouteOnMap(
-                  context,
-                  mapController,
-                  routePoints,
-                  legData,
-                );
-
-                // Hiển thị _showRouteDialog luôn
                 _showRouteDialog(context, distance, duration, steps);
-                // Zoom bao trùm
-                await mapController.animateCamera(
-                  CameraUpdate.newLatLngBounds(
-                    _boundsFromLatLngList(routePoints),
-                    left: 50,
-                    right: 50,
-                    top: 100,
-                    bottom: 100,
-                  ),
-                );
 
                 // Thêm marker đầu-cuối
                 await mapController.addSymbol(
@@ -809,24 +792,6 @@ class _OpenMapPageState extends State<OpenMapPage> {
     return null;
   }
 
-  LatLngBounds _boundsFromLatLngList(List<LatLng> list) {
-    double? x0, x1, y0, y1;
-    for (final latLng in list) {
-      if (x0 == null) {
-        x0 = x1 = latLng.latitude;
-        y0 = y1 = latLng.longitude;
-      } else {
-        if (latLng.latitude > x1!) x1 = latLng.latitude;
-        if (latLng.latitude < x0) x0 = latLng.latitude;
-        if (latLng.longitude > y1!) y1 = latLng.longitude;
-        if (latLng.longitude < y0!) y0 = latLng.longitude;
-      }
-    }
-    return LatLngBounds(
-      southwest: LatLng(x0!, y0!),
-      northeast: LatLng(x1!, y1!),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -869,32 +834,18 @@ class _OpenMapPageState extends State<OpenMapPage> {
                 vehicle: vehicle,
               );
 
-              final List<LatLng> routePoints = directionResult["points"];
-              final Map<String, dynamic> legData =
-                  directionResult["data"]["routes"][0]["legs"][0];
+              final routes = directionResult["data"]["routes"];
+
+              // Vẽ và auto zoom luôn
+              await MapHelper.drawRoutesOnMap(context, mapController, routes);
+
+              // Lấy dữ liệu tuyến đầu để hiển thị
+              final legData = routes[0]["legs"][0];
               final distance = legData["distance"]["text"];
               final duration = legData["duration"]["text"];
               final steps = legData["steps"];
 
-              // Vẽ tuyến đường (overlay thông tin vẫn có nhưng không dùng callback)
-              await MapHelper.drawRouteOnMap(
-                context,
-                mapController,
-                routePoints,
-                legData,
-              );
-
-              // Hiển thị _showRouteDialog luôn
               _showRouteDialog(context, distance, duration, steps);
-              await mapController.animateCamera(
-                CameraUpdate.newLatLngBounds(
-                  _boundsFromLatLngList(routePoints),
-                  left: 50,
-                  right: 50,
-                  top: 100,
-                  bottom: 100,
-                ),
-              );
 
               await mapController.addSymbol(
                 SymbolOptions(
