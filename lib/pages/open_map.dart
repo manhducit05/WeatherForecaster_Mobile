@@ -10,6 +10,7 @@ import 'dart:convert';
 import '../utils/storage_helper.dart';
 import '../utils/location_helper.dart';
 import '../widgets/direction_route_dialog_widget.dart';
+import '../widgets/routes_selector.dart';
 import '../utils/map_helper.dart';
 
 class OpenMapPage extends StatefulWidget {
@@ -27,6 +28,9 @@ class _OpenMapPageState extends State<OpenMapPage> {
   bool _hasSaved = false;
   bool _styleLoaded = false;
 
+  int _selectedRouteIndex = 0;
+  List<Map<String, dynamic>> _routes = [];
+
   String? _routeDistance;
   String? _routeDuration;
   List<dynamic>? _routeSteps;
@@ -35,7 +39,6 @@ class _OpenMapPageState extends State<OpenMapPage> {
     mapController = controller;
     debugPrint("Map created");
 
-    // giữ nguyên listener symbol tap
     mapController.onSymbolTapped.add((symbol) {
       final placeId = symbol.data?["placeId"];
       _showMarkerMenu(symbol, placeId: placeId);
@@ -47,16 +50,21 @@ class _OpenMapPageState extends State<OpenMapPage> {
     _styleLoaded = true;
     debugPrint("🗺️ onStyleLoaded fired");
 
-    // Load image AFTER style loaded — an toàn hơn
+    // 1) Load image
     try {
       final ByteData bytes = await rootBundle.load(
         "assets/images/markup_icon.png",
       );
       final Uint8List list = bytes.buffer.asUint8List();
       await mapController.addImage("custom-marker", list);
-      debugPrint("custom-marker added after style loaded");
     } catch (e) {
-      debugPrint("addImage failed in _onStyleLoaded: $e");
+      debugPrint("addImage failed: $e");
+    }
+
+    // 2) Vẽ lại polyline nếu đã có route
+    if (_routes.isNotEmpty) {
+      debugPrint("🔄 Style reloaded → redraw ${_routes.length} routes");
+      await MapHelper.drawRoutesOnMap(context, mapController, _routes);
     }
   }
 
@@ -74,6 +82,25 @@ class _OpenMapPageState extends State<OpenMapPage> {
         iconSize: 0.005,
       ),
     );
+  }
+
+  // hàm chọn route
+  void _setRouteInfo(dynamic route) {
+    setState(() {
+      _routeDuration = route["legs"][0]["duration"]["text"];
+      _routeDistance = route["legs"][0]["distance"]["text"];
+      _routeSteps = route["legs"][0]["steps"];
+    });
+  }
+
+  void _onSelectRoute(int index) async {
+    _selectedRouteIndex = index;
+
+    // highlight trên bản đồ
+    await MapHelper.highlightRoute(mapController, index, _routes.length);
+
+    // cập nhật UI
+    _setRouteInfo(_routes[index]);
   }
 
   // Hiện menu khi click marker
@@ -139,21 +166,26 @@ class _OpenMapPageState extends State<OpenMapPage> {
                   endLng: to.longitude,
                   vehicle: vehicle,
                 );
+
+                // Lấy danh sách tuyến đường đúng cách
                 final routes = directionResult["data"]["routes"];
 
-                // Vẽ và auto zoom luôn
+                setState(() {
+                  _routes = routes.cast<Map<String, dynamic>>();
+                  _selectedRouteIndex = 0;
+                });
+
+                // Vẽ và auto zoom
                 await MapHelper.drawRoutesOnMap(context, mapController, routes);
 
+                // Lấy dữ liệu route đầu
                 final legData = routes[0]["legs"][0];
+
                 setState(() {
                   _routeDistance = legData["distance"]["text"];
                   _routeDuration = legData["duration"]["text"];
                   _routeSteps = legData["steps"];
                 });
-
-
-
-
 
                 // Thêm marker đầu-cuối
                 await mapController.addSymbol(
@@ -264,8 +296,6 @@ class _OpenMapPageState extends State<OpenMapPage> {
       },
     );
   }
-
-
 
   void _showStepsDialog(BuildContext context, List<dynamic> steps) {
     showModalBottomSheet(
@@ -737,7 +767,6 @@ class _OpenMapPageState extends State<OpenMapPage> {
     return null;
   }
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -779,14 +808,22 @@ class _OpenMapPageState extends State<OpenMapPage> {
                 vehicle: vehicle,
               );
 
+              // Lấy danh sách tuyến đường đúng cách
               final routes = directionResult["data"]["routes"];
+              final rawRoutes = directionResult["data"]["routes"];
+              setState(() {
+                _routes = rawRoutes.cast<Map<String, dynamic>>();
+              });
+              setState(() {
+                _routes = routes.cast<Map<String, dynamic>>();
+                _selectedRouteIndex = 0;
+              });
 
-              // Vẽ và auto zoom luôn
+              // Vẽ và auto zoom
               await MapHelper.drawRoutesOnMap(context, mapController, routes);
 
-              // Lấy dữ liệu tuyến đầu để hiển thị
+              // Lấy dữ liệu route đầu
               final legData = routes[0]["legs"][0];
-
 
               setState(() {
                 _routeDistance = legData["distance"]["text"];
@@ -835,12 +872,14 @@ class _OpenMapPageState extends State<OpenMapPage> {
             DraggableScrollableSheet(
               initialChildSize: 0.12, // khi thu nhỏ
               minChildSize: 0.12,
-              maxChildSize: 0.5, // kéo lên hiển thị chi tiết
+              maxChildSize: 0.22, // kéo lên hiển thị chi tiết
               builder: (context, scrollController) {
                 return Container(
                   decoration: const BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(20),
+                    ),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black26,
@@ -864,15 +903,29 @@ class _OpenMapPageState extends State<OpenMapPage> {
                             borderRadius: BorderRadius.circular(2),
                           ),
                         ),
-                        Text(
-                          "Thời gian: $_routeDuration\nQuãng đường: $_routeDistance",
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
+
+                        // ✅ THÊM ROUTE SELECTOR VÀO ĐÂY
+                        if (_routes.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: RoutesSelector(
+                              routes: _routes,
+                              selectedIndex: _selectedRouteIndex,
+                              onSelect: _onSelectRoute,
+                            ),
                           ),
-                        ),
+
+                        // Text(
+                        //   "Thời gian: $_routeDuration\nQuãng đường: $_routeDistance",
+                        //   textAlign: TextAlign.center,
+                        //   style: const TextStyle(
+                        //     fontSize: 16,
+                        //     fontWeight: FontWeight.bold,
+                        //   ),
+                        // ),
+
                         const SizedBox(height: 16),
+
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           children: [
