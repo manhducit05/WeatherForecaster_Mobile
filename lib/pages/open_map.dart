@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 import 'package:geolocator/geolocator.dart';
@@ -43,6 +45,38 @@ class _OpenMapPageState extends State<OpenMapPage> {
       final placeId = symbol.data?["placeId"];
       _showMarkerMenu(symbol, placeId: placeId);
     });
+
+    mapController.onFeatureTapped.add((
+      Point<double> point,
+      LatLng coordinates,
+      String id,
+      String layerId,
+      Annotation? annotation,
+    ) {
+      _handleRouteLineTap(layerId, id);
+    });
+  }
+
+  void _handleRouteLineTap(String layerId, String featureId) {
+    // Kiểm tra xem layerId có phải là
+    // một trong các layer tuyến đường của bạn không
+    if (layerId.startsWith("route-line-")) {
+      // Trích xuất chỉ mục (index) của route
+      // Ví dụ: "route-line-0" -> index = 0
+      final indexStr = layerId.substring("route-line-".length);
+      final routeIndex = int.tryParse(indexStr);
+
+      if (routeIndex != null) {
+        debugPrint("Đã click vào tuyến đường có chỉ mục (index): $routeIndex");
+
+        // ⭐ Gợi ý: Gọi hàm highlight để làm nổi bật tuyến đường được chọn
+        // Giả sử tổng số routes là 3 (route 0, 1, 2)
+        MapHelper.highlightRoute(mapController, routeIndex, 3);
+
+        // Thêm logic xử lý sự kiện click của bạn ở đây (ví dụ: hiển thị thông tin chi tiết về route đó)
+        // ...
+      }
+    }
   }
 
   Future<void> _onStyleLoaded() async {
@@ -55,12 +89,34 @@ class _OpenMapPageState extends State<OpenMapPage> {
       final ByteData bytes = await rootBundle.load(
         "assets/images/markup_icon.png",
       );
+
       final Uint8List list = bytes.buffer.asUint8List();
       await mapController.addImage("custom-marker", list);
     } catch (e) {
       debugPrint("addImage failed: $e");
     }
+    //  Load START marker
+    try {
+      final ByteData startBytes = await rootBundle.load(
+        "assets/icons/start-position-marker.svg",
+      );
+      await mapController.addImage(
+        "start-marker",
+        startBytes.buffer.asUint8List(),
+      );
+    } catch (e) {
+      debugPrint("❌ addImage start-marker failed: $e");
+    }
 
+    // Load END marker
+    try {
+      final ByteData endBytes = await rootBundle.load(
+        "assets/icons/end-position-marker.svg",
+      );
+      await mapController.addImage("end-marker", endBytes.buffer.asUint8List());
+    } catch (e) {
+      debugPrint("❌ addImage end-marker failed: $e");
+    }
     // 2) Vẽ lại polyline nếu đã có route
     if (_routes.isNotEmpty) {
       debugPrint("🔄 Style reloaded → redraw ${_routes.length} routes");
@@ -174,10 +230,35 @@ class _OpenMapPageState extends State<OpenMapPage> {
                   _routes = routes.cast<Map<String, dynamic>>();
                   _selectedRouteIndex = 0;
                 });
+                // tim diem bat dau, ket thuc va danh dau
+                final startLocation = LatLng(
+                  directionResult["data"]["routes"][0]["legs"][0]["start_location"]["lat"],
+                  directionResult["data"]["routes"][0]["legs"][0]["start_location"]["lng"],
+                );
+
+                final endLocation = LatLng(
+                  directionResult["data"]["routes"][0]["legs"][0]["end_location"]["lat"],
+                  directionResult["data"]["routes"][0]["legs"][0]["end_location"]["lng"],
+                );
+
+                await MapHelper.clearMarkers(mapController);
 
                 // Vẽ và auto zoom
                 await MapHelper.drawRoutesOnMap(context, mapController, routes);
 
+                await MapHelper.addStartEndMarker(
+                  mapController,
+                  startLocation,
+                  iconAssetPath: "assets/images/start-position-marker.png",
+                  imageId: "startIcon",
+                );
+
+                await MapHelper.addStartEndMarker(
+                  mapController,
+                  endLocation,
+                  iconAssetPath: "assets/images/end-position-marker.png",
+                  imageId: "endIcon",
+                );
                 // Lấy dữ liệu route đầu
                 final legData = routes[0]["legs"][0];
 
@@ -810,18 +891,39 @@ class _OpenMapPageState extends State<OpenMapPage> {
 
               // Lấy danh sách tuyến đường đúng cách
               final routes = directionResult["data"]["routes"];
-              final rawRoutes = directionResult["data"]["routes"];
-              setState(() {
-                _routes = rawRoutes.cast<Map<String, dynamic>>();
-              });
               setState(() {
                 _routes = routes.cast<Map<String, dynamic>>();
                 _selectedRouteIndex = 0;
               });
+              // tim diem bat dau, ket thuc va danh dau m
+              final startLocation = LatLng(
+                directionResult["data"]["routes"][0]["legs"][0]["start_location"]["lat"],
+                directionResult["data"]["routes"][0]["legs"][0]["start_location"]["lng"],
+              );
 
+              final endLocation = LatLng(
+                directionResult["data"]["routes"][0]["legs"][0]["end_location"]["lat"],
+                directionResult["data"]["routes"][0]["legs"][0]["end_location"]["lng"],
+              );
+
+              // clear marker cũ nếu có
+              await MapHelper.clearMarkers(mapController);
               // Vẽ và auto zoom
               await MapHelper.drawRoutesOnMap(context, mapController, routes);
+              // danh dau
+              await MapHelper.addStartEndMarker(
+                mapController,
+                startLocation,
+                iconAssetPath: "assets/images/start-position-marker.png",
+                imageId: "startIcon",
+              );
 
+              await MapHelper.addStartEndMarker(
+                mapController,
+                endLocation,
+                iconAssetPath: "assets/images/end-position-marker.png",
+                imageId: "endIcon",
+              );
               // Lấy dữ liệu route đầu
               final legData = routes[0]["legs"][0];
 
@@ -923,7 +1025,6 @@ class _OpenMapPageState extends State<OpenMapPage> {
                         //     fontWeight: FontWeight.bold,
                         //   ),
                         // ),
-
                         const SizedBox(height: 16),
 
                         Row(

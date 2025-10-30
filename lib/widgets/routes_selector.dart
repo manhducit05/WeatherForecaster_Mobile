@@ -27,7 +27,6 @@ class RoutesSelector extends StatelessWidget {
             children: List.generate(routes.length, (i) {
               final route = routes[i];
 
-              // ✅ LẤY ĐÚNG DỮ LIỆU
               final legs = route["legs"] as List<dynamic>?;
               final leg = legs != null && legs.isNotEmpty ? legs.first : null;
 

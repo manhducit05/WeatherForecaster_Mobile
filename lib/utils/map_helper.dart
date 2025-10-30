@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:maplibre_gl/maplibre_gl.dart';
 import 'polyline_decoder.dart';
@@ -31,7 +32,9 @@ class MapHelper {
     final data = json.decode(res.body);
 
     // defensive: ensure routes exists
-    if (data == null || data["routes"] == null || (data["routes"] as List).isEmpty) {
+    if (data == null ||
+        data["routes"] == null ||
+        (data["routes"] as List).isEmpty) {
       throw Exception("Không có route trả về");
     }
 
@@ -42,11 +45,11 @@ class MapHelper {
   //  2. Vẽ nhiều tuyến đường + tự zoom camera (sửa an toàn)
   // ==========================================================
   static Future<void> drawRoutesOnMap(
-      BuildContext context,
-      MapLibreMapController controller,
-      List<dynamic> routes, {
-        double cameraPadding = 80.0,
-      }) async {
+    BuildContext context,
+    MapLibreMapController controller,
+    List<dynamic> routes, {
+    double cameraPadding = 80.0,
+  }) async {
     if (routes.isEmpty) {
       debugPrint("Không có route nào để vẽ");
       return;
@@ -80,18 +83,24 @@ class MapHelper {
         // lấy chuỗi polyline an toàn:
         String? polylineEncoded;
         // Google-style: overview_polyline.points
-        if (route != null && route["overview_polyline"] != null && route["overview_polyline"]["points"] != null) {
+        if (route != null &&
+            route["overview_polyline"] != null &&
+            route["overview_polyline"]["points"] != null) {
           polylineEncoded = route["overview_polyline"]["points"]?.toString();
         }
         // Or OSRM-like: geometry (encoded polyline), or maybe route["geometry"]
-        else if (route != null && route["geometry"] != null && route["geometry"] is String) {
+        else if (route != null &&
+            route["geometry"] != null &&
+            route["geometry"] is String) {
           polylineEncoded = route["geometry"] as String;
         }
 
         List<LatLng> points = [];
 
         // If API already returned coordinates array (GeoJSON-like), handle it:
-        if (route != null && route["geometry"] is Map && route["geometry"]["coordinates"] is List) {
+        if (route != null &&
+            route["geometry"] is Map &&
+            route["geometry"]["coordinates"] is List) {
           try {
             final coords = route["geometry"]["coordinates"] as List;
             for (final c in coords) {
@@ -124,18 +133,21 @@ class MapHelper {
 
         allPoints.addAll(points);
 
-        final color = (i == 0) ? "#007AFF" : (i == 1) ? "#FF9500" : "#FF3B30";
+        final color = (i == 0)
+            ? "#007AFF"
+            : (i == 1)
+            ? "#FF9500"
+            : "#FF3B30";
 
         // Build a valid GeoJSON Feature for this single route
         final feature = {
           "type": "Feature",
-          "properties": {
-            "route_index": i,
-            "color": color,
-          },
+          "properties": {"route_index": i, "color": color},
           "geometry": {
             "type": "LineString",
-            "coordinates": points.map((p) => [p.longitude, p.latitude]).toList(),
+            "coordinates": points
+                .map((p) => [p.longitude, p.latitude])
+                .toList(),
           },
         };
 
@@ -145,10 +157,12 @@ class MapHelper {
 
         await controller.addSource(
           sourceId,
-          GeojsonSourceProperties(data: {
-            "type": "FeatureCollection",
-            "features": [feature],
-          }),
+          GeojsonSourceProperties(
+            data: {
+              "type": "FeatureCollection",
+              "features": [feature],
+            },
+          ),
         );
 
         // Add line layer for this route
@@ -186,7 +200,9 @@ class MapHelper {
         debugPrint("Could not compute bounds for routes");
       }
 
-      debugPrint("Vẽ ${routes.length} tuyến đường (có ${allPoints.length} điểm) thành công!");
+      debugPrint(
+        "Vẽ ${routes.length} tuyến đường (có ${allPoints.length} điểm) thành công!",
+      );
     } catch (e, st) {
       debugPrint("Lỗi khi vẽ route: $e\n$st");
     }
@@ -230,10 +246,10 @@ class MapHelper {
   //  4. Highlight route
   // ==========================================================
   static Future<void> highlightRoute(
-      MapLibreMapController controller,
-      int selectedIndex,
-      int totalRoutes,
-      ) async {
+    MapLibreMapController controller,
+    int selectedIndex,
+    int totalRoutes,
+  ) async {
     for (int i = 0; i < totalRoutes; i++) {
       final isSelected = (i == selectedIndex);
 
@@ -249,6 +265,73 @@ class MapHelper {
         // layer may not exist (skip)
         debugPrint("highlightRoute: cannot set props for route-line-$i: $e");
       }
+    }
+  }
+
+  // ==========================================================
+  //  5. Thêm marker (point) với icon từ assets
+  // ==========================================================
+  static final Set<String> _addedImages = {};
+
+  static Future<void> addStartEndMarker(
+    MapLibreMapController controller,
+    LatLng location, {
+    required String iconAssetPath,
+    required String imageId,
+  }) async {
+    // Load image & override nếu có sẵn
+    final bytes = await rootBundle.load(iconAssetPath);
+    await controller.addImage(imageId, bytes.buffer.asUint8List());
+
+    final sourceId = "${imageId}_source";
+    final layerId = "${imageId}_layer";
+
+    // Xóa layer & source cũ nếu tồn tại
+    try {
+      await controller.removeLayer(layerId);
+    } catch (_) {}
+    try {
+      await controller.removeSource(sourceId);
+    } catch (_) {}
+
+    await controller.addSource(
+      sourceId,
+      GeojsonSourceProperties(
+        data: {
+          "type": "FeatureCollection",
+          "features": [
+            {
+              "type": "Feature",
+              "geometry": {
+                "type": "Point",
+                "coordinates": [location.longitude, location.latitude],
+              },
+            },
+          ],
+        },
+      ),
+    );
+
+    await controller.addLayer(
+      sourceId,
+      layerId,
+      SymbolLayerProperties(
+        iconImage: imageId,
+        iconSize: 0.2,
+        iconAllowOverlap: true,
+        iconIgnorePlacement: true,
+      ),
+    );
+  }
+
+  static Future<void> clearMarkers(MapLibreMapController controller) async {
+    for (final id in ["startIcon", "endIcon"]) {
+      try {
+        await controller.removeLayer("${id}_layer");
+      } catch (_) {}
+      try {
+        await controller.removeSource("${id}_source");
+      } catch (_) {}
     }
   }
 }

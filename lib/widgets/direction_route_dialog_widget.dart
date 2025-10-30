@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 import '../utils/map_helper.dart';
+import '../utils/location_helper.dart';
 
 class DirectionRouteDialog extends StatefulWidget {
   final LatLng? defaultDestination;
@@ -38,6 +39,25 @@ class _DirectionRouteDialogState extends State<DirectionRouteDialog> {
       _toLatLng = widget.defaultDestination;
       _toController.text = widget.defaultDestinationName ?? "Địa điểm đã chọn";
     }
+  }
+
+  Future<String?> _reverseGeocode(double lat, double lon) async {
+    final apiKey = dotenv.env['API_KEY'];
+    final url =
+        "https://mapapis.openmap.vn/v1/place/reverse?lat=$lat&lng=$lon&apiKey=$apiKey";
+
+    final res = await http.get(Uri.parse(url));
+
+    if (res.statusCode == 200) {
+      final data = json.decode(res.body);
+      final features = data["features"] as List?;
+      if (features != null && features.isNotEmpty) {
+        final props = features.first["properties"];
+        return props?["name"] ?? props?["label"];
+      }
+    }
+
+    return null;
   }
 
   Future<List<Map<String, dynamic>>> fetchSuggestions(String query) async {
@@ -242,6 +262,8 @@ class _DirectionRouteDialogState extends State<DirectionRouteDialog> {
             children: [
               _buildTransportTabs(),
               const SizedBox(height: 16),
+
+              /// ✅ BOX NHẬP + NÚT ĐẢO VỊ TRÍ
               Stack(
                 alignment: Alignment.centerRight,
                 children: [
@@ -269,22 +291,54 @@ class _DirectionRouteDialogState extends State<DirectionRouteDialog> {
                   ),
                 ],
               ),
+              // ✅ NÚT LẤY VỊ TRÍ CỦA TÔI
+              TextButton.icon(
+                onPressed: () async {
+                  try {
+                    final pos = await LocationHelper.determinePosition();
+                    final lat = pos.latitude;
+                    final lon = pos.longitude;
+
+                    debugPrint("📍 My location: $lat, $lon");
+
+                    final name = await _reverseGeocode(lat, lon);
+
+                    setState(() {
+                      _fromLatLng = LatLng(lat, lon);
+                      _fromController.text = name ?? "Vị trí của tôi";
+                    });
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text("Không thể lấy vị trí: $e")),
+                    );
+                  }
+                },
+                icon: const Icon(Icons.my_location, color: Colors.blue),
+                label: const Text(
+                  "Lấy vị trí của tôi",
+                  style: TextStyle(color: Colors.blue),
+                ),
+              ),
 
               if (showFromSuggestions)
                 _buildSuggestionList(_fromController.text.trim(), true),
               if (showToSuggestions)
                 _buildSuggestionList(_toController.text.trim(), false),
 
-              const SizedBox(height: 12),
               TextButton.icon(
-                onPressed: () {},
+                onPressed: () {
+                  // TODO: logic thêm waypoint
+                },
                 icon: const Icon(Icons.add_location_alt, color: Colors.teal),
                 label: const Text(
                   "Thêm điểm đến",
                   style: TextStyle(color: Colors.teal),
                 ),
               ),
-              const SizedBox(height: 16),
+
+              const SizedBox(height: 20),
+
+              /// ✅ NÚT TÌM ĐƯỜNG
               ElevatedButton.icon(
                 onPressed: () async {
                   if (_fromLatLng == null || _toLatLng == null) {
@@ -305,13 +359,13 @@ class _DirectionRouteDialogState extends State<DirectionRouteDialog> {
                       : selectedMode == 1
                       ? "motor"
                       : "walking";
-                  // 🔹 Thêm log trước khi gọi API
+
                   debugPrint(
-                    "Fetching direction from (${_fromLatLng!.latitude},"
-                    " ${_fromLatLng!.longitude}) "
-                    "to (${_toLatLng!.latitude}, ${_toLatLng!.longitude})"
-                    " | vehicle: $vehicle",
+                    "Fetching direction from (${_fromLatLng!.latitude}, ${_fromLatLng!.longitude}) "
+                    "to (${_toLatLng!.latitude}, ${_toLatLng!.longitude}) "
+                    "| vehicle: $vehicle",
                   );
+
                   final points = await MapHelper.fetchDirection(
                     startLat: _fromLatLng!.latitude,
                     startLng: _fromLatLng!.longitude,
@@ -319,7 +373,9 @@ class _DirectionRouteDialogState extends State<DirectionRouteDialog> {
                     endLng: _toLatLng!.longitude,
                     vehicle: vehicle,
                   );
+
                   setState(() => isLoadingRoute = false);
+
                   if (points.isEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
@@ -328,7 +384,7 @@ class _DirectionRouteDialogState extends State<DirectionRouteDialog> {
                     );
                     return;
                   }
-                  // Trả kết quả về cho OpenMapPage để vẽ route
+
                   Navigator.pop(context, {
                     "points": points,
                     "from": _fromLatLng,
