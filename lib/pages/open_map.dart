@@ -56,25 +56,49 @@ class _OpenMapPageState extends State<OpenMapPage> {
       _handleRouteLineTap(layerId, id);
     });
   }
+  void _selectRoute(int newIndex) {
+    // Đảm bảo chỉ mục hợp lệ và có sự thay đổi
+    if (newIndex >= 0 &&
+        newIndex < _routes.length &&
+        _selectedRouteIndex != newIndex) {
+      // 1. Cập nhật trạng thái
+      setState(() {
+        _selectedRouteIndex = newIndex;
+      });
 
+      // 2. Đồng bộ hóa với MapHelper (Highlight trên bản đồ)
+      // Đảm bảo controller đã sẵn sàng
+      if (_routes.isNotEmpty) {
+        // ⭐ Gọi hàm highlight mà bạn đã định nghĩa trong MapHelper
+        MapHelper.highlightRoute(
+          mapController,
+          _selectedRouteIndex,
+          _routes.length,
+        );
+      }
+
+      // 3. (Tùy chọn) Cập nhật thông tin chi tiết khác (khoảng cách, thời gian, v.v.)
+      if (_routes.isNotEmpty) {
+        final legData = _routes[_selectedRouteIndex]["legs"][0];
+        // ... (logic cập nhật _routeDistance, _routeDuration, ...)
+        debugPrint(
+          "Tuyến đường được chọn: $_selectedRouteIndex, Distance: ${legData["distance"]["text"]}",
+        );
+      }
+    }
+  }
   void _handleRouteLineTap(String layerId, String featureId) {
-    // Kiểm tra xem layerId có phải là
-    // một trong các layer tuyến đường của bạn không
+    // Kiểm tra xem layerId có phải là một trong các layer tuyến đường của bạn không
     if (layerId.startsWith("route-line-")) {
-      // Trích xuất chỉ mục (index) của route
-      // Ví dụ: "route-line-0" -> index = 0
       final indexStr = layerId.substring("route-line-".length);
       final routeIndex = int.tryParse(indexStr);
 
       if (routeIndex != null) {
         debugPrint("Đã click vào tuyến đường có chỉ mục (index): $routeIndex");
 
-        // ⭐ Gợi ý: Gọi hàm highlight để làm nổi bật tuyến đường được chọn
-        // Giả sử tổng số routes là 3 (route 0, 1, 2)
-        MapHelper.highlightRoute(mapController, routeIndex, 3);
-
-        // Thêm logic xử lý sự kiện click của bạn ở đây (ví dụ: hiển thị thông tin chi tiết về route đó)
-        // ...
+        // ⭐ Thay thế logic highlight trực tiếp bằng việc gọi hàm cập nhật State
+        // Hàm này sẽ tự động gọi MapHelper.highlightRoute và cập nhật RoutesSelector
+        _selectRoute(routeIndex);
       }
     }
   }
@@ -138,25 +162,6 @@ class _OpenMapPageState extends State<OpenMapPage> {
         iconSize: 0.005,
       ),
     );
-  }
-
-  // hàm chọn route
-  void _setRouteInfo(dynamic route) {
-    setState(() {
-      _routeDuration = route["legs"][0]["duration"]["text"];
-      _routeDistance = route["legs"][0]["distance"]["text"];
-      _routeSteps = route["legs"][0]["steps"];
-    });
-  }
-
-  void _onSelectRoute(int index) async {
-    _selectedRouteIndex = index;
-
-    // highlight trên bản đồ
-    await MapHelper.highlightRoute(mapController, index, _routes.length);
-
-    // cập nhật UI
-    _setRouteInfo(_routes[index]);
   }
 
   // Hiện menu khi click marker
@@ -228,7 +233,8 @@ class _OpenMapPageState extends State<OpenMapPage> {
 
                 setState(() {
                   _routes = routes.cast<Map<String, dynamic>>();
-                  _selectedRouteIndex = 0;
+                  // _selectedRouteIndex = 0;
+
                 });
                 // tim diem bat dau, ket thuc va danh dau
                 final startLocation = LatLng(
@@ -245,7 +251,7 @@ class _OpenMapPageState extends State<OpenMapPage> {
 
                 // Vẽ và auto zoom
                 await MapHelper.drawRoutesOnMap(context, mapController, routes);
-
+                _selectRoute(0);
                 await MapHelper.addStartEndMarker(
                   mapController,
                   startLocation,
@@ -1013,18 +1019,10 @@ class _OpenMapPageState extends State<OpenMapPage> {
                             child: RoutesSelector(
                               routes: _routes,
                               selectedIndex: _selectedRouteIndex,
-                              onSelect: _onSelectRoute,
+                              onSelect: _selectRoute,
                             ),
                           ),
 
-                        // Text(
-                        //   "Thời gian: $_routeDuration\nQuãng đường: $_routeDistance",
-                        //   textAlign: TextAlign.center,
-                        //   style: const TextStyle(
-                        //     fontSize: 16,
-                        //     fontWeight: FontWeight.bold,
-                        //   ),
-                        // ),
                         const SizedBox(height: 16),
 
                         Row(
