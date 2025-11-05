@@ -195,175 +195,149 @@ class _OpenMapPageState extends State<OpenMapPage> {
             ListTile(
               leading: const Icon(Icons.directions),
               title: const Text("Get Directions to here"),
-              // onTap: () async {
-              //   Navigator.pop(ctx);
-              //
-              //   final dest = LatLng(
-              //     symbol.options.geometry!.latitude,
-              //     symbol.options.geometry!.longitude,
-              //   );
-              //
-              //   final destName =
-              //       symbol.options.textField ?? "Selected location";
-              //
-              //   // --- MỞ DIALOG ---
-              //   final result = await showDialog(
-              //     context: context,
-              //     builder: (_) => DirectionRouteDialog(
-              //       mapController: mapController,
-              //       defaultDestination: dest,
-              //       defaultDestinationName: destName,
-              //     ),
-              //   );
-              //
-              //   if (result == null) return;
-              //
-              //   final from = result["from"] as LatLng;
-              //   final to = result["to"] as LatLng;
-              //   final waypoints = result["waypoints"] as List<LatLng>;
-              //   final vehicle = result["vehicle"] ?? "car";
-              //
-              //   if (!_styleLoaded) {
-              //     await Future.delayed(const Duration(milliseconds: 300));
-              //   }
-              //
-              //   late Map<String, dynamic> directionResult;
-              //
-              //   if (waypoints.isNotEmpty) {
-              //     directionResult = await MapHelper.fetchMultiDirection(
-              //       context: context,
-              //       controller: mapController,
-              //       start: from,
-              //       end: to,
-              //       waypoints: waypoints,
-              //       vehicle: vehicle,
-              //     );
-              //   } else {
-              //     directionResult = await MapHelper.fetchDirection(
-              //       startLat: from.latitude,
-              //       startLng: from.longitude,
-              //       endLat: to.latitude,
-              //       endLng: to.longitude,
-              //       vehicle: vehicle,
-              //     );
-              //   }
-              //
-              //   // --- LẤY ROUTES ---
-              //   final routes = directionResult["data"]["routes"];
-              //   if (routes.isEmpty) return;
-              //
-              //   setState(() {
-              //     _routes = routes.cast<Map<String, dynamic>>();
-              //     _selectedRouteIndex = 0;
-              //   });
-              //
-              //   // chọn route an toàn (dùng selectedRouteIndex nếu bạn có)
-              //   final routeIndex =
-              //       (_selectedRouteIndex != null &&
-              //           _selectedRouteIndex < _routes.length)
-              //       ? _selectedRouteIndex
-              //       : 0;
-              //
-              //   final Map<String, dynamic> selectedRoute = _routes[routeIndex];
-              //
-              //   // Lấy legs an toàn
-              //   final rawLegs = selectedRoute["legs"];
-              //   if (rawLegs == null || rawLegs is! List) {
-              //     debugPrint("No legs found in selected route");
-              //     return;
-              //   }
-              //   final List legs = rawLegs;
-              //
-              //   // START = start_location của leg đầu tiên
-              //   final firstLeg = legs.first as Map<String, dynamic>?;
-              //
-              //   if (firstLeg == null || firstLeg["start_location"] == null) {
-              //     debugPrint("Invalid first leg or start_location");
-              //     return;
-              //   }
-              //   final startLocRaw =
-              //       firstLeg["start_location"] as Map<String, dynamic>;
-              //   final startLocation = LatLng(
-              //     (startLocRaw["lat"] as num).toDouble(),
-              //     (startLocRaw["lng"] as num).toDouble(),
-              //   );
-              //
-              //   // END = end_location của leg cuối cùng
-              //   final lastLeg = legs.last as Map<String, dynamic>?;
-              //   if (lastLeg == null || lastLeg["end_location"] == null) {
-              //     debugPrint("Invalid last leg or end_location");
-              //     return;
-              //   }
-              //   final endLocRaw =
-              //       lastLeg["end_location"] as Map<String, dynamic>;
-              //   final endLocation = LatLng(
-              //     (endLocRaw["lat"] as num).toDouble(),
-              //     (endLocRaw["lng"] as num).toDouble(),
-              //   );
-              //
-              //   // --- GỘP DISTANCE + DURATION + STEPS ---
-              //   final sumMeters = directionResult["totalDistance"] ?? 0;
-              //   final sumSeconds = directionResult["totalDuration"] ?? 0;
-              //   final allSteps = directionResult["allSteps"] ?? [];
-              //
-              //   String formatDistance(int meters) => meters >= 1000
-              //       ? "${(meters / 1000).toStringAsFixed(1)} km"
-              //       : "$meters m";
-              //
-              //   String formatDuration(int s) {
-              //     final h = s ~/ 3600;
-              //     final m = (s % 3600) ~/ 60;
-              //     if (h > 0) return "$h giờ $m phút";
-              //     return "$m phút";
-              //   }
-              //
-              //   setState(() {
-              //     _routeDistance = formatDistance(sumMeters);
-              //     _routeDuration = formatDuration(sumSeconds);
-              //     _routeSteps = allSteps;
-              //   });
-              //
-              //   // --- CLEAR CŨ ---
-              //
-              //   await MapHelper.clearMarkers(mapController);
-              //
-              //   // --- VẼ ROUTES ---
-              //   if (waypoints.isNotEmpty) {
-              //     // MULTI-STOP → vẽ đường gộp
-              //     final mergedPoints =
-              //         directionResult["points"] as List<LatLng>;
-              //     await MapHelper.drawRoutesOnMap(
-              //       context,
-              //       mapController,
-              //       mergedPoints,
-              //     );
-              //   } else {
-              //     // SINGLE-ROUTE → vẽ bình thường (có thể có alternatives)
-              //     await MapHelper.drawRoutesOnMap(
-              //       context,
-              //       mapController,
-              //       routes,
-              //     );
-              //
-              //     // CHỈ GỌI CHỌN ROUTE KHI Ở CHẾ ĐỘ SINGLE-ROUTE
-              //     _selectRoute(0);
-              //   }
-              //   // --- MARKER ---
-              //   await MapHelper.addStartEndMarker(
-              //     mapController,
-              //     startLocation,
-              //     iconAssetPath: "assets/images/start-position-marker.png",
-              //     imageId: "startIcon",
-              //   );
-              //
-              //   await MapHelper.addStartEndMarker(
-              //     mapController,
-              //     endLocation,
-              //     iconAssetPath: "assets/images/end-position-marker.png",
-              //     imageId: "endIcon",
-              //   );
-              //
-              // },
+              onTap: () async {
+                Navigator.pop(ctx);
+
+                final dest = LatLng(
+                  symbol.options.geometry!.latitude,
+                  symbol.options.geometry!.longitude,
+                );
+
+                final destName =
+                    symbol.options.textField ?? "Selected location";
+
+                // --- MỞ DIALOG ---
+                final result = await showDialog(
+                  context: context,
+                  builder: (_) => DirectionRouteDialog(
+                    mapController: mapController,
+                    defaultDestination: dest,
+                    defaultDestinationName: destName,
+                  ),
+                );
+
+                if (result == null) return;
+
+                final from = result["from"] as LatLng;
+                final to = result["to"] as LatLng;
+                final waypoints = result["waypoints"] as List<LatLng>?;
+                final vehicle = result["vehicle"] ?? "car";
+
+                if (!_styleLoaded) {
+                  await Future.delayed(const Duration(milliseconds: 300));
+                }
+
+                Map<String, dynamic> directionResult;
+
+                // 1) Multi-waypoint → dùng API nhiều điểm
+                if (waypoints != null && waypoints.isNotEmpty) {
+                  directionResult = await MapHelper.fetchMultiDirection(
+                    context: context,
+                    controller: mapController,
+                    start: from,
+                    end: to,
+                    waypoints: waypoints,
+                    vehicle: vehicle,
+                  );
+                }
+                // 2) Route đơn → API cũ
+                else {
+                  directionResult = await MapHelper.fetchDirection(
+                    startLat: from.latitude,
+                    startLng: from.longitude,
+                    endLat: to.latitude,
+                    endLng: to.longitude,
+                    vehicle: vehicle,
+                  );
+                }
+
+                final routes = directionResult["data"]["routes"] ?? [];
+                if (routes.isEmpty) return;
+
+                setState(() {
+                  _routes = routes.cast<Map<String, dynamic>>();
+                  _isMultiRoute = waypoints != null && waypoints.isNotEmpty;
+                  _selectedRouteIndex = 0;
+                });
+
+                // Lấy legs của route đầu tiên (hoặc selectedRouteIndex nếu muốn)
+                final legs = routes[0]["legs"].cast<Map<String, dynamic>>();
+
+                // START = start_location của leg đầu tiên
+                final startLocation = LatLng(
+                  legs.first["start_location"]["lat"],
+                  legs.first["start_location"]["lng"],
+                );
+
+                // END = end_location của leg cuối cùng
+                final endLocation = LatLng(
+                  legs.last["end_location"]["lat"],
+                  legs.last["end_location"]["lng"],
+                );
+
+                // Clear markers cũ
+                await MapHelper.clearMarkers(mapController);
+
+                // Vẽ route
+                if (_isMultiRoute) {
+                  final mergedPoints =
+                      directionResult["points"] as List<LatLng>;
+                  await MapHelper.drawRoutesOnMap(
+                    context,
+                    mapController,
+                    mergedPoints,
+                  );
+                } else {
+                  await MapHelper.drawRoutesOnMap(
+                    context,
+                    mapController,
+                    routes,
+                  );
+                }
+
+                // Đặt marker START + END
+                await MapHelper.addStartEndMarker(
+                  mapController,
+                  startLocation,
+                  iconAssetPath: "assets/images/start-position-marker.png",
+                  imageId: "startIcon",
+                );
+
+                await MapHelper.addStartEndMarker(
+                  mapController,
+                  endLocation,
+                  iconAssetPath: "assets/images/end-position-marker.png",
+                  imageId: "endIcon",
+                );
+
+                // TÍNH TOÁN TỔNG DISTANCE + DURATION + STEPS CHO TOÀN ROUTE
+                List allSteps = [];
+                for (final leg in legs) {
+                  if (leg["steps"] != null) {
+                    allSteps.addAll(leg["steps"]);
+                  }
+                }
+                final int sumMeters =
+                    (directionResult["totalDistance"] ?? 0) as int;
+                final int sumSeconds =
+                    (directionResult["totalDuration"] ?? 0) as int;
+
+                String formatDistance(int m) =>
+                    m >= 1000 ? "${(m / 1000).toStringAsFixed(1)} km" : "$m m";
+
+                String formatDuration(int s) {
+                  final h = s ~/ 3600;
+                  final m = (s % 3600) ~/ 60;
+                  if (h > 0) return "$h giờ $m phút";
+                  return "$m phút";
+                }
+
+                setState(() {
+                  _routeDistance = formatDistance(sumMeters);
+                  _routeDuration = formatDuration(sumSeconds);
+                  _routeSteps = allSteps;
+                });
+              },
             ),
 
             ListTile(
@@ -935,6 +909,7 @@ class _OpenMapPageState extends State<OpenMapPage> {
     }
     return null;
   }
+
   Widget _buildMultiRouteInfo() {
     return Material(
       elevation: 6,
@@ -949,10 +924,7 @@ class _OpenMapPageState extends State<OpenMapPage> {
             const SizedBox(width: 8),
             Text(
               "$_routeDistance • $_routeDuration",
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
           ],
         ),
@@ -1073,15 +1045,15 @@ class _OpenMapPageState extends State<OpenMapPage> {
                   allSteps.addAll(leg["steps"]);
                 }
               }
-              final int sumMeters = (directionResult["totalDistance"] ?? 0) as int;
-              final int sumSeconds = (directionResult["totalDuration"] ?? 0) as int;
+              final int sumMeters =
+                  (directionResult["totalDistance"] ?? 0) as int;
+              final int sumSeconds =
+                  (directionResult["totalDuration"] ?? 0) as int;
               debugPrint("UI UPDATE - SUM METERS: $sumMeters");
               debugPrint("UI UPDATE - SUM SECONDS: $sumSeconds");
               // Format distance
               String formatDistance(int m) =>
-                  m >= 1000
-                      ? "${(m / 1000).toStringAsFixed(1)} km"
-                      : "$m m";
+                  m >= 1000 ? "${(m / 1000).toStringAsFixed(1)} km" : "$m m";
 
               // Format duration
               String formatDuration(int s) {
@@ -1161,12 +1133,12 @@ class _OpenMapPageState extends State<OpenMapPage> {
                           Padding(
                             padding: const EdgeInsets.only(bottom: 12),
                             child: _isMultiRoute
-                                ? _buildMultiRouteInfo()   // ✅ hiển thị tổng distance + duration
+                                ? _buildMultiRouteInfo() // ✅ hiển thị tổng distance + duration
                                 : RoutesSelector(
-                              routes: _routes,
-                              selectedIndex: _selectedRouteIndex,
-                              onSelect: _selectRoute,
-                            ),
+                                    routes: _routes,
+                                    selectedIndex: _selectedRouteIndex,
+                                    onSelect: _selectRoute,
+                                  ),
                           ),
 
                         const SizedBox(height: 16),
