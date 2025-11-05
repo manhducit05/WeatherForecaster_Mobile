@@ -9,11 +9,13 @@ import '../utils/location_helper.dart';
 class DirectionRouteDialog extends StatefulWidget {
   final LatLng? defaultDestination;
   final String? defaultDestinationName;
+  final MapLibreMapController mapController;
 
   const DirectionRouteDialog({
     super.key,
     this.defaultDestination,
     this.defaultDestinationName,
+    required this.mapController,
   });
 
   @override
@@ -32,6 +34,13 @@ class _DirectionRouteDialogState extends State<DirectionRouteDialog> {
   LatLng? _toLatLng;
   bool isLoadingRoute = false;
 
+  // quản lý đa điểm đến
+  bool hasMultipleDestinations = false;
+
+  List<TextEditingController> waypointControllers = [];
+  List<LatLng?> waypointLatLngs = [];
+  List<bool> waypointSuggestionVisibility = [];
+
   @override
   void initState() {
     super.initState();
@@ -39,6 +48,60 @@ class _DirectionRouteDialogState extends State<DirectionRouteDialog> {
       _toLatLng = widget.defaultDestination;
       _toController.text = widget.defaultDestinationName ?? "Địa điểm đã chọn";
     }
+  }
+
+  // thêm nhiều điểm đến
+  void addWaypoint() {
+    setState(() {
+      waypointControllers.add(TextEditingController());
+      waypointLatLngs.add(null);
+      waypointSuggestionVisibility.add(false);
+
+      hasMultipleDestinations = true; // ĐÁNH DẤU LÀ ĐANG CHẠY MULTI
+    });
+  }
+
+  Widget _buildWaypointSuggestionList(String query, int index) {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: fetchSuggestions(query),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const SizedBox.shrink();
+        }
+        final suggestions = snapshot.data!;
+        return Container(
+          margin: const EdgeInsets.only(top: 4),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: const [BoxShadow(blurRadius: 4, color: Colors.black12)],
+          ),
+          constraints: const BoxConstraints(maxHeight: 220),
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: suggestions.length,
+            itemBuilder: (ctx, idx) {
+              final s = suggestions[idx];
+              return ListTile(
+                leading: const Icon(Icons.place, color: Colors.teal),
+                title: Text(s["name"]),
+                subtitle: Text(s["label"]),
+                onTap: () async {
+                  final latlng = await _fetchPlaceLatLng(s["id"]);
+                  if (latlng == null) return;
+
+                  setState(() {
+                    waypointControllers[index].text = s["name"];
+                    waypointLatLngs[index] = latlng;
+                    waypointSuggestionVisibility[index] = false;
+                  });
+                },
+              );
+            },
+          ),
+        );
+      },
+    );
   }
 
   Future<String?> _reverseGeocode(double lat, double lon) async {
@@ -129,6 +192,7 @@ class _DirectionRouteDialogState extends State<DirectionRouteDialog> {
     required String hint,
     required TextEditingController controller,
     required bool isFrom,
+    int? waypointIndex, // thêm tham số mới
   }) {
     return Material(
       elevation: 2,
@@ -155,19 +219,26 @@ class _DirectionRouteDialogState extends State<DirectionRouteDialog> {
                     controller.clear();
                     if (isFrom) {
                       showFromSuggestions = false;
-                    } else {
+                    } else if (!isFrom && waypointIndex == null) {
                       showToSuggestions = false;
+                    } else if (waypointIndex != null) {
+                      waypointSuggestionVisibility[waypointIndex] = false;
                     }
                   }),
                 )
               : null,
         ),
+
         onChanged: (val) {
           setState(() {
             if (isFrom) {
               showFromSuggestions = val.trim().isNotEmpty;
-            } else {
+            } else if (!isFrom && waypointIndex == null) {
               showToSuggestions = val.trim().isNotEmpty;
+            } else if (waypointIndex != null) {
+              waypointSuggestionVisibility[waypointIndex] = val
+                  .trim()
+                  .isNotEmpty;
             }
           });
         },
@@ -263,7 +334,7 @@ class _DirectionRouteDialogState extends State<DirectionRouteDialog> {
               _buildTransportTabs(),
               const SizedBox(height: 16),
 
-              /// ✅ BOX NHẬP + NÚT ĐẢO VỊ TRÍ
+              /// BOX NHẬP + NÚT ĐẢO VỊ TRÍ
               Stack(
                 alignment: Alignment.centerRight,
                 children: [
@@ -280,10 +351,34 @@ class _DirectionRouteDialogState extends State<DirectionRouteDialog> {
                         controller: _toController,
                         isFrom: false,
                       ),
+                      Column(
+                        children: List.generate(waypointControllers.length, (
+                          index,
+                        ) {
+                          return Column(
+                            children: [
+                              const SizedBox(height: 12),
+                              _buildInputBox(
+                                hint: "Nhập điểm đến ${index + 2}...",
+                                controller: waypointControllers[index],
+                                isFrom: false,
+                                waypointIndex:
+                                    index, // quản lý riêng biệt ừng ô theo index
+                              ),
+
+                              if (waypointSuggestionVisibility[index])
+                                _buildWaypointSuggestionList(
+                                  waypointControllers[index].text.trim(),
+                                  index,
+                                ),
+                            ],
+                          );
+                        }),
+                      ),
                     ],
                   ),
                   Positioned(
-                    right: 8,
+                    right: 24,
                     child: IconButton(
                       onPressed: swapLocations,
                       icon: const Icon(Icons.swap_vert, color: Colors.teal),
@@ -291,7 +386,7 @@ class _DirectionRouteDialogState extends State<DirectionRouteDialog> {
                   ),
                 ],
               ),
-              // ✅ NÚT LẤY VỊ TRÍ CỦA TÔI
+              //  NÚT LẤY VỊ TRÍ CỦA TÔI
               TextButton.icon(
                 onPressed: () async {
                   try {
@@ -326,9 +421,7 @@ class _DirectionRouteDialogState extends State<DirectionRouteDialog> {
                 _buildSuggestionList(_toController.text.trim(), false),
 
               TextButton.icon(
-                onPressed: () {
-                  // TODO: logic thêm waypoint
-                },
+                onPressed: addWaypoint,
                 icon: const Icon(Icons.add_location_alt, color: Colors.teal),
                 label: const Text(
                   "Thêm điểm đến",
@@ -338,7 +431,7 @@ class _DirectionRouteDialogState extends State<DirectionRouteDialog> {
 
               const SizedBox(height: 20),
 
-              /// ✅ NÚT TÌM ĐƯỜNG
+              /// NÚT TÌM ĐƯỜNG
               ElevatedButton.icon(
                 onPressed: () async {
                   if (_fromLatLng == null || _toLatLng == null) {
@@ -360,37 +453,113 @@ class _DirectionRouteDialogState extends State<DirectionRouteDialog> {
                       ? "motor"
                       : "walking";
 
-                  debugPrint(
-                    "Fetching direction from (${_fromLatLng!.latitude}, ${_fromLatLng!.longitude}) "
-                    "to (${_toLatLng!.latitude}, ${_toLatLng!.longitude}) "
-                    "| vehicle: $vehicle",
-                  );
+                  // 1. Gộp TẤT CẢ các điểm dừng (điểm đến chính và các waypoint phụ) theo thứ tự nhập
+                  final List<LatLng> allDestinations = [];
 
-                  final points = await MapHelper.fetchDirection(
-                    startLat: _fromLatLng!.latitude,
-                    startLng: _fromLatLng!.longitude,
-                    endLat: _toLatLng!.latitude,
-                    endLng: _toLatLng!.longitude,
-                    vehicle: vehicle,
-                  );
-
-                  setState(() => isLoadingRoute = false);
-
-                  if (points.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text("Không tìm thấy tuyến đường"),
-                      ),
-                    );
-                    return;
+                  // Thêm điểm đến đầu tiên (từ _toLatLng - ô nhập thứ 2 trên UI)
+                  if (_toLatLng != null) {
+                    allDestinations.add(_toLatLng!);
                   }
 
-                  Navigator.pop(context, {
-                    "points": points,
-                    "from": _fromLatLng,
-                    "to": _toLatLng,
-                    "vehicle": vehicle,
-                  });
+                  // Thêm các điểm waypoint phụ (từ waypointLatLngs - các ô nhập tiếp theo)
+                  allDestinations.addAll(waypointLatLngs.whereType<LatLng>());
+
+                  // 2. Xác định điểm kết thúc cuối cùng (End) và các Waypoint trung gian
+                  final bool isMultiDestinationRoute =
+                      allDestinations.length > 1;
+
+                  LatLng finalDestination = _toLatLng!;
+                  List<LatLng> intermediateWaypoints = [];
+
+                  if (isMultiDestinationRoute) {
+                    // Điểm End: là điểm cuối cùng được nhập
+                    finalDestination = allDestinations.last;
+
+                    // Waypoints: là TẤT CẢ các điểm còn lại, ngoại trừ điểm cuối cùng (End)
+                    intermediateWaypoints = allDestinations.sublist(
+                      0,
+                      allDestinations.length - 1,
+                    );
+
+                    // Ghi đè _toLatLng bằng finalDestination (điểm kết thúc cuối cùng)
+                  }
+
+                  try {
+                    if (isMultiDestinationRoute) {
+                      // 🔹 Multi-direction
+                      debugPrint(
+                        "➡️ Multi-direction mode (Start -> Waypoints -> End)",
+                      );
+
+                      final multiResult = await MapHelper.fetchMultiDirection(
+                        context: context,
+                        controller: widget.mapController,
+                        start: _fromLatLng!, // Start
+                        end: finalDestination, // End (điểm cuối cùng nhập)
+                        waypoints:
+                            intermediateWaypoints, // Waypoints (điểm ở giữa theo thứ tự)
+                        vehicle: vehicle,
+                      );
+
+                      setState(() => isLoadingRoute = false);
+
+                      if (multiResult["points"] == null ||
+                          multiResult["points"].isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              "Không tìm thấy tuyến đường nhiều điểm",
+                            ),
+                          ),
+                        );
+                        return;
+                      }
+
+                      Navigator.pop(context, {
+                        "points": multiResult["points"],
+                        "from": _fromLatLng,
+                        "to": finalDestination, // Trả về End
+                        "waypoints": intermediateWaypoints, // Trả về Waypoints
+                        "vehicle": vehicle,
+                        "data": multiResult["data"],
+                      });
+                    } else {
+                      // 🔹 Single-direction (Chỉ có Start và End ban đầu)
+                      debugPrint("➡️ Single-direction mode");
+
+                      final points = await MapHelper.fetchDirection(
+                        startLat: _fromLatLng!.latitude,
+                        startLng: _fromLatLng!.longitude,
+                        endLat: _toLatLng!.latitude,
+                        endLng: _toLatLng!.longitude,
+                        vehicle: vehicle,
+                      );
+
+                      setState(() => isLoadingRoute = false);
+
+                      if (points.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text("Không tìm thấy tuyến đường"),
+                          ),
+                        );
+                        return;
+                      }
+
+                      Navigator.pop(context, {
+                        "points": points,
+                        "from": _fromLatLng,
+                        "to": _toLatLng,
+                        "waypoints": [],
+                        "vehicle": vehicle,
+                      });
+                    }
+                  } catch (e) {
+                    setState(() => isLoadingRoute = false);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text("Lỗi khi tìm đường: $e")),
+                    );
+                  }
                 },
                 icon: const Icon(Icons.alt_route),
                 label: isLoadingRoute
