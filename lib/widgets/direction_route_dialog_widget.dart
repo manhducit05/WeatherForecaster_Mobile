@@ -214,18 +214,18 @@ class _DirectionRouteDialogState extends State<DirectionRouteDialog> {
           ),
           suffixIcon: controller.text.isNotEmpty
               ? IconButton(
-                  icon: const Icon(Icons.clear, color: Colors.grey),
-                  onPressed: () => setState(() {
-                    controller.clear();
-                    if (isFrom) {
-                      showFromSuggestions = false;
-                    } else if (!isFrom && waypointIndex == null) {
-                      showToSuggestions = false;
-                    } else if (waypointIndex != null) {
-                      waypointSuggestionVisibility[waypointIndex] = false;
-                    }
-                  }),
-                )
+            icon: const Icon(Icons.clear, color: Colors.grey),
+            onPressed: () => setState(() {
+              controller.clear();
+              if (isFrom) {
+                showFromSuggestions = false;
+              } else if (!isFrom && waypointIndex == null) {
+                showToSuggestions = false;
+              } else if (waypointIndex != null) {
+                waypointSuggestionVisibility[waypointIndex] = false;
+              }
+            }),
+          )
               : null,
         ),
 
@@ -335,56 +335,60 @@ class _DirectionRouteDialogState extends State<DirectionRouteDialog> {
               const SizedBox(height: 16),
 
               /// BOX NHẬP + NÚT ĐẢO VỊ TRÍ
-              Stack(
-                alignment: Alignment.centerRight,
-                children: [
-                  Column(
-                    children: [
-                      _buildInputBox(
-                        hint: "Nhập điểm xuất phát...",
-                        controller: _fromController,
-                        isFrom: true,
+              SizedBox(
+                height: 120,
+                child: Stack(
+                  alignment: Alignment.centerRight,
+                  children: [
+                    Column(
+                      children: [
+                        _buildInputBox(
+                          hint: "Nhập điểm xuất phát...",
+                          controller: _fromController,
+                          isFrom: true,
+                        ),
+                        const SizedBox(height: 12),
+                        _buildInputBox(
+                          hint: "Nhập điểm đến...",
+                          controller: _toController,
+                          isFrom: false,
+                        ),
+
+                      ],
+                    ),
+                    Positioned(
+                      right: 24,
+                      child: IconButton(
+                        onPressed: swapLocations,
+                        icon: const Icon(Icons.swap_vert, color: Colors.teal),
                       ),
+                    ),
+                  ],
+                ),
+              ),
+              Column(
+                children: List.generate(waypointControllers.length, (
+                    index,
+                    ) {
+                  return Column(
+                    children: [
                       const SizedBox(height: 12),
                       _buildInputBox(
-                        hint: "Nhập điểm đến...",
-                        controller: _toController,
+                        hint: "Nhập điểm đến ${index + 2}...",
+                        controller: waypointControllers[index],
                         isFrom: false,
+                        waypointIndex:
+                        index, // quản lý riêng biệt ừng ô theo index
                       ),
-                      Column(
-                        children: List.generate(waypointControllers.length, (
-                          index,
-                        ) {
-                          return Column(
-                            children: [
-                              const SizedBox(height: 12),
-                              _buildInputBox(
-                                hint: "Nhập điểm đến ${index + 2}...",
-                                controller: waypointControllers[index],
-                                isFrom: false,
-                                waypointIndex:
-                                    index, // quản lý riêng biệt ừng ô theo index
-                              ),
 
-                              if (waypointSuggestionVisibility[index])
-                                _buildWaypointSuggestionList(
-                                  waypointControllers[index].text.trim(),
-                                  index,
-                                ),
-                            ],
-                          );
-                        }),
-                      ),
+                      if (waypointSuggestionVisibility[index])
+                        _buildWaypointSuggestionList(
+                          waypointControllers[index].text.trim(),
+                          index,
+                        ),
                     ],
-                  ),
-                  Positioned(
-                    right: 24,
-                    child: IconButton(
-                      onPressed: swapLocations,
-                      icon: const Icon(Icons.swap_vert, color: Colors.teal),
-                    ),
-                  ),
-                ],
+                  );
+                }),
               ),
               //  NÚT LẤY VỊ TRÍ CỦA TÔI
               TextButton.icon(
@@ -497,7 +501,7 @@ class _DirectionRouteDialogState extends State<DirectionRouteDialog> {
                         start: _fromLatLng!, // Start
                         end: finalDestination, // End (điểm cuối cùng nhập)
                         waypoints:
-                            intermediateWaypoints, // Waypoints (điểm ở giữa theo thứ tự)
+                        intermediateWaypoints, // Waypoints (điểm ở giữa theo thứ tự)
                         vehicle: vehicle,
                       );
 
@@ -564,10 +568,10 @@ class _DirectionRouteDialogState extends State<DirectionRouteDialog> {
                 icon: const Icon(Icons.alt_route),
                 label: isLoadingRoute
                     ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
                     : const Text("Tìm đường"),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.teal,
