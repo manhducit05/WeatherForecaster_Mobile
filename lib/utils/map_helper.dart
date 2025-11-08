@@ -605,7 +605,6 @@ class MapHelper {
   // ==========================================================
   //  5. Thêm marker (point) với icon từ assets
   // ==========================================================
-  static final Set<String> _addedImages = {};
 
   static Future<void> addStartEndMarker(
     MapLibreMapController controller,
@@ -657,6 +656,8 @@ class MapHelper {
       ),
     );
   }
+
+
 
   static Future<void> clearMarkers(MapLibreMapController controller) async {
     for (final id in ["startIcon", "endIcon"]) {

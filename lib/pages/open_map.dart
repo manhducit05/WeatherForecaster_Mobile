@@ -1,5 +1,4 @@
 import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 import 'package:geolocator/geolocator.dart';
@@ -94,7 +93,7 @@ class _OpenMapPageState extends State<OpenMapPage> {
       // 2. Đồng bộ hóa với MapHelper (Highlight trên bản đồ)
       // Đảm bảo controller đã sẵn sàng
       if (_routes.isNotEmpty) {
-        // ⭐ Gọi hàm highlight mà bạn đã định nghĩa trong MapHelper
+        // Gọi hàm highlight mà bạn đã định nghĩa trong MapHelper
         MapHelper.highlightRoute(
           mapController,
           _selectedRouteIndex,
@@ -122,7 +121,7 @@ class _OpenMapPageState extends State<OpenMapPage> {
       if (routeIndex != null) {
         debugPrint("Đã click vào tuyến đường có chỉ mục (index): $routeIndex");
 
-        // ⭐ Thay thế logic highlight trực tiếp bằng việc gọi hàm cập nhật State
+        // Thay thế logic highlight trực tiếp bằng việc gọi hàm cập nhật State
         // Hàm này sẽ tự động gọi MapHelper.highlightRoute và cập nhật RoutesSelector
         _selectRoute(routeIndex);
       }
@@ -365,7 +364,18 @@ class _OpenMapPageState extends State<OpenMapPage> {
                   iconAssetPath: "assets/images/end-position-marker.png",
                   imageId: "endIcon",
                 );
-
+                if (waypoints.isNotEmpty) {
+                  int index = 1;
+                  for (final w in waypoints) {
+                    await MapHelper.addStartEndMarker(
+                      mapController,
+                      w,
+                      iconAssetPath: "assets/images/position-waypoint-marker.png",
+                      imageId: "waypoint_$index",
+                    );
+                    index++;
+                  }
+                }
                 // ---- Tổng hợp steps/distance/duration ----
                 List allSteps = [];
                 for (final leg in legs) {
@@ -1070,7 +1080,7 @@ class _OpenMapPageState extends State<OpenMapPage> {
 
                 setState(() {
                   _routes = routes.cast<Map<String, dynamic>>();
-                  _isMultiRoute = waypoints != null && waypoints.isNotEmpty;
+                  _isMultiRoute = waypoints.isNotEmpty;
                 });
 
                 // Lấy toàn bộ legs
@@ -1109,7 +1119,18 @@ class _OpenMapPageState extends State<OpenMapPage> {
                   iconAssetPath: "assets/images/end-position-marker.png",
                   imageId: "endIcon",
                 );
-
+                if (waypoints.isNotEmpty) {
+                  int index = 1;
+                  for (final w in waypoints) {
+                    await MapHelper.addStartEndMarker(
+                      mapController,
+                      w,
+                      iconAssetPath: "assets/images/position-waypoint-marker.png",
+                      imageId: "waypoint_$index",
+                    );
+                    index++;
+                  }
+                }
                 // TÍNH TOÁN TỔNG DISTANCE + DURATION + STEPS CHO TOÀN ROUTE
                 List allSteps = [];
                 for (final leg in legs) {
@@ -1142,7 +1163,7 @@ class _OpenMapPageState extends State<OpenMapPage> {
                   _routeSteps = allSteps;
                 });
 
-                return; // ✅ NHỚ return để không rơi xuống case thường
+                return; // NHỚ return để không rơi xuống case thường
               }
             },
           ),
@@ -1203,12 +1224,12 @@ class _OpenMapPageState extends State<OpenMapPage> {
                           ),
                         ),
 
-                        // ✅ THÊM ROUTE SELECTOR VÀO ĐÂY
+                        // THÊM ROUTE SELECTOR VÀO ĐÂY
                         if (_routes.isNotEmpty)
                           Padding(
                             padding: const EdgeInsets.only(bottom: 12),
                             child: _isMultiRoute
-                                ? _buildMultiRouteInfo() // ✅ hiển thị tổng distance + duration
+                                ? _buildMultiRouteInfo() // hiển thị tổng distance + duration
                                 : RoutesSelector(
                               routes: _routes,
                               selectedIndex: _selectedRouteIndex,
