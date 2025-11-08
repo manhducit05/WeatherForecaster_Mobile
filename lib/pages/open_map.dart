@@ -302,7 +302,18 @@ class _OpenMapPageState extends State<OpenMapPage> {
                     iconAssetPath: "assets/images/end-position-marker.png",
                     imageId: "endIcon",
                   );
+                  if (to.latitude != endLocation.latitude ||
+                      to.longitude != endLocation.longitude) {
 
+                    await MapHelper.drawDashedLine(
+                      controller: mapController, // Giả định mapController là MapLibreMapController
+                      from: endLocation,
+                      to: to,
+                      color: "#A9A9A9", // Màu đỏ (đã chuyển sang hex)
+                      lineWidth: 3.0,
+                      dashArray: [1.0, 1.0], // Độ dài nét đứt và khoảng trống
+                    );
+                  }
                   // UI update
                   setState(() {
                     _routeDistance = leg["distance"]["text"];
@@ -396,7 +407,18 @@ class _OpenMapPageState extends State<OpenMapPage> {
                   if (h > 0) return "$h giờ $m phút";
                   return "$m phút";
                 }
+                if (to.latitude != endLocation.latitude ||
+                    to.longitude != endLocation.longitude) {
 
+                  await MapHelper.drawDashedLine(
+                    controller: mapController, // Giả định mapController là MapLibreMapController
+                    from: endLocation,
+                    to: to,
+                    color: "#A9A9A9", // Màu đỏ (đã chuyển sang hex)
+                    lineWidth: 3.0,
+                    dashArray: [1.0, 1.0], // Độ dài nét đứt và khoảng trống
+                  );
+                }
                 setState(() {
                   _routeDistance = formatDistance(sumMeters);
                   _routeDuration = formatDuration(sumSeconds);
@@ -1063,6 +1085,25 @@ class _OpenMapPageState extends State<OpenMapPage> {
                   iconAssetPath: "assets/images/end-position-marker.png",
                   imageId: "endIcon",
                 );
+                if (to.latitude != endLocation.latitude ||
+                    to.longitude != endLocation.longitude) {
+
+                  await MapHelper.drawDashedLine(
+                    controller: mapController, // Giả định mapController là MapLibreMapController
+                    from: endLocation,
+                    to: to,
+                    color: "#A9A9A9", // Màu đỏ (đã chuyển sang hex)
+                    lineWidth: 3.0,
+                    dashArray: [1.0, 1.0], // Độ dài nét đứt và khoảng trống
+                  );
+                  // Vẽ marker cho điểm to (điểm đến thực sự)
+                  await MapHelper.addStartEndMarker(
+                    mapController,
+                    to,
+                    iconAssetPath: "assets/images/end-position-marker.png",
+                    imageId: "realDestIcon",
+                  );
+                }
               } else {
                 Map<String, dynamic> directionResult;
                 // ========== 2️⃣ Multi-direction ==========
@@ -1119,6 +1160,24 @@ class _OpenMapPageState extends State<OpenMapPage> {
                   iconAssetPath: "assets/images/end-position-marker.png",
                   imageId: "endIcon",
                 );
+                if (to.latitude != endLocation.latitude ||
+                    to.longitude != endLocation.longitude) {
+
+                  await MapHelper.drawDashedLine(
+                    controller: mapController, // Giả định mapController là MapLibreMapController
+                    from: endLocation,
+                    to: to,
+                    color: "#A9A9A9", // Màu đỏ (đã chuyển sang hex)
+                    lineWidth: 3.0,
+                    dashArray: [1.0, 1.0], // Độ dài nét đứt và khoảng trống
+                  );
+                  await MapHelper.addStartEndMarker(
+                    mapController,
+                    to,
+                    iconAssetPath: "assets/images/end-position-marker.png",
+                    imageId: "realDestIcon",
+                  );
+                }
                 if (waypoints.isNotEmpty) {
                   int index = 1;
                   for (final w in waypoints) {

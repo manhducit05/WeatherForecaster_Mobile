@@ -8,9 +8,7 @@ import 'polyline_decoder.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class MapHelper {
-  // ==========================================================
   //  1. Fetch routes (lấy nhiều tuyến đường)
-  // ==========================================================
   static Future<Map<String, dynamic>> fetchDirection({
     required double startLat,
     required double startLng,
@@ -62,9 +60,9 @@ class MapHelper {
 
       final url = Uri.parse(
         "https://mapapis.openmap.vn/v1/direction"
-            "?origin=${start.latitude},${start.longitude}"
-            "&destination=$destinationStr"
-            "&alternatives=true&vehicle=$vehicle&apikey=$apiKey",
+        "?origin=${start.latitude},${start.longitude}"
+        "&destination=$destinationStr"
+        "&alternatives=true&vehicle=$vehicle&apikey=$apiKey",
       );
 
       final res = await http.get(url);
@@ -88,16 +86,16 @@ class MapHelper {
       int totalDistance = 0;
       int totalDuration = 0;
 
-      /// ✅ Loop legs để lấy polyline + cộng tổng
+      /// Loop legs để lấy polyline + cộng tổng
       for (var leg in legs ?? []) {
-        // ✅ Cộng tổng distance & duration
+        // Cộng tổng distance & duration
         final num dist = leg["distance"]?["value"] ?? 0;
         final num dura = leg["duration"]?["value"] ?? 0;
 
         totalDistance += dist.toInt();
         totalDuration += dura.toInt();
 
-        // ✅ Lấy polyline
+        // Lấy polyline
         for (var step in leg["steps"] ?? []) {
           final poly = step["polyline"]?["points"];
           if (poly != null && poly is String && poly.isNotEmpty) {
@@ -106,13 +104,13 @@ class MapHelper {
         }
       }
 
-      debugPrint("✅ TOTAL MERGED = ${mergedPoints.length}");
-      debugPrint("✅ TOTAL DISTANCE = $totalDistance m");
-      debugPrint("✅ TOTAL DURATION = $totalDuration s");
+      debugPrint("TOTAL MERGED = ${mergedPoints.length}");
+      debugPrint("TOTAL DISTANCE = $totalDistance m");
+      debugPrint("TOTAL DURATION = $totalDuration s");
 
       await MapHelper.drawRoutesMultiOnMap(context, controller, mergedPoints);
 
-      /// ✅ Trả thêm tổng values ra UI
+      // Trả thêm tổng values ra UI
       return {
         "points": mergedPoints,
         "data": data,
@@ -124,10 +122,7 @@ class MapHelper {
       return {"points": [], "data": {}};
     }
   }
-
-  // ==========================================================
   //  2. Vẽ nhiều tuyến đường + tự zoom camera (sửa an toàn)
-  // ==========================================================
   static Future<void> drawRoutesOnMap(
     BuildContext context,
     MapLibreMapController controller,
@@ -291,12 +286,82 @@ class MapHelper {
       debugPrint("Lỗi khi vẽ route: $e\n$st");
     }
   }
+  static const String _sourceId = "dashed-line-source";
+  static const String _layerId = "dashed-line-layer";
+  static Future<void> drawDashedLine({
+    required MapLibreMapController controller,
+    required LatLng from,
+    required LatLng to,
+    String color = "#FF0000", // Mặc định là màu đỏ
+    double lineWidth = 2.0,
+    List<double> dashArray = const [2.0, 2.0],
+  }) async {
+
+    // 1. Chuẩn bị dữ liệu GeoJSON cho LineString
+    final geoJsonData = {
+      "type": "FeatureCollection",
+      "features": [
+        {
+          "type": "Feature",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [from.longitude, from.latitude], // [lng, lat]
+              [to.longitude, to.latitude],     // [lng, lat]
+            ],
+          },
+          "properties": {},
+        }
+      ]
+    };
+
+    //Kiểm tra và Xóa/Cập nhật Source và Layer cũ (nếu có)
+    try {
+      await controller.removeLayer(_layerId);
+    } catch (e) {
+      // Bỏ qua nếu Layer chưa tồn tại
+    }
+    try {
+      await controller.removeSource(_sourceId);
+    } catch (e) {
+      // Bỏ qua nếu Source chưa tồn tại
+    }
+
+    // 3. Thêm GeoJSON Source mới
+    await controller.addGeoJsonSource(_sourceId, geoJsonData);
+
+    // 4. Thêm LineLayer với Style "line-dasharray"
+    await controller.addLineLayer(
+      _sourceId,
+      _layerId,
+      // Style properties cho đường nét đứt
+      LineLayerProperties(
+        lineColor: color,
+        lineWidth: lineWidth,
+        lineDasharray: dashArray,
+      ),
+    );
+
+    print('Đã vẽ đường nét đứt (MapLibre GL) với Source ID: $_sourceId và Layer ID: $_layerId');
+  }
+
+  // Hàm tiện ích để dễ dàng xóa đường nét đứt
+  static Future<void> removeDashedLine(MapLibreMapController controller) async {
+    try {
+      await controller.removeLayer(_layerId);
+      await controller.removeSource(_sourceId);
+      print('Đã xóa đường nét đứt (MapLibre GL).');
+    } catch (e) {
+      print('Không tìm thấy đường nét đứt để xóa: $e');
+    }
+  }
+
   static Future<void> drawRoutesMultiOnMap(
-      BuildContext context,
-      MapLibreMapController controller,
-      List<dynamic> routes, {
-        double cameraPadding = 80.0,
-      }) async {
+    BuildContext context,
+    MapLibreMapController controller,
+    List<dynamic> routes, {
+    double cameraPadding = 80.0,
+  }) async {
     if (routes.isEmpty) {
       debugPrint("Không có route nào để vẽ");
       return;
@@ -306,18 +371,14 @@ class MapHelper {
       // Always clear old layers
       await MapHelper.clearRouteLayers(controller);
 
-      // ==========================================================
       // CASE 1: routes is a List<LatLng>
-      // ==========================================================
       if (_isListOfLatLng(routes)) {
         final pts = routes.cast<LatLng>();
         await _drawSingleLine(controller, pts, cameraPadding);
         return;
       }
 
-      // ==========================================================
       // CASE 2: routes[0] is Map with key "points" or "merged_points"
-      // ==========================================================
       if (routes.length == 1 && routes[0] is Map) {
         final r = routes[0] as Map;
 
@@ -341,9 +402,7 @@ class MapHelper {
         final route = routes[i];
         List<LatLng> points = [];
 
-        // ---------------------------------------------------------
         // GeoJSON style geometry
-        // ---------------------------------------------------------
         if (route is Map &&
             route["geometry"] is Map &&
             route["geometry"]["coordinates"] is List) {
@@ -360,9 +419,7 @@ class MapHelper {
             debugPrint("Geometry parse error route $i: $e");
           }
         }
-        // ---------------------------------------------------------
         // Google overview_polyline
-        // ---------------------------------------------------------
         else if (route is Map &&
             route["overview_polyline"]?["points"] != null) {
           try {
@@ -407,7 +464,6 @@ class MapHelper {
 
         final src = "route-source-$i";
         final layer = "route-line-$i";
-
         await controller.addSource(
           src,
           GeojsonSourceProperties(
@@ -417,7 +473,6 @@ class MapHelper {
             },
           ),
         );
-
         await controller.addLineLayer(
           src,
           layer,
@@ -431,9 +486,7 @@ class MapHelper {
         );
       }
 
-      // ==========================================================
       // Fit camera
-      // ==========================================================
       if (allPoints.isNotEmpty) {
         final bounds = _getBounds(allPoints);
         if (bounds != null) {
@@ -459,10 +512,10 @@ class MapHelper {
   // Draw single merged polyline (used for multi-stop merged points)
 
   static Future<void> _drawSingleLine(
-      MapLibreMapController controller,
-      List<LatLng> points,
-      double cameraPadding,
-      ) async {
+    MapLibreMapController controller,
+    List<LatLng> points,
+    double cameraPadding,
+  ) async {
     if (points.isEmpty) {
       debugPrint("drawSingleLine: points empty");
       return;
@@ -542,9 +595,7 @@ class MapHelper {
       await controller.removeSource("route-source-$i");
     }
   }
-  // ==========================================================
   //  3. Hàm tính bounds (private) - trả về null nếu ko có điểm
-  // ==========================================================
   static LatLngBounds? _getBounds(List<LatLng> points) {
     if (points.isEmpty) return null;
 
@@ -576,9 +627,7 @@ class MapHelper {
     );
   }
 
-  // ==========================================================
   //  4. Highlight route
-  // ==========================================================
   static Future<void> highlightRoute(
     MapLibreMapController controller,
     int selectedIndex,
@@ -602,10 +651,7 @@ class MapHelper {
     }
   }
 
-  // ==========================================================
   //  5. Thêm marker (point) với icon từ assets
-  // ==========================================================
-
   static Future<void> addStartEndMarker(
     MapLibreMapController controller,
     LatLng location, {
@@ -656,8 +702,6 @@ class MapHelper {
       ),
     );
   }
-
-
 
   static Future<void> clearMarkers(MapLibreMapController controller) async {
     for (final id in ["startIcon", "endIcon"]) {
