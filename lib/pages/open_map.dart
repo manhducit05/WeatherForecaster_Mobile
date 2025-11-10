@@ -163,7 +163,7 @@ class _OpenMapPageState extends State<OpenMapPage> {
     // 2) Vẽ lại polyline nếu đã có route
     if (_routes.isNotEmpty) {
       debugPrint("Style reloaded → redraw ${_routes.length} routes");
-      await MapHelper.drawRoutesOnMap(context, mapController, _routes);
+      await MapHelper.drawRoutesOnMap (mapController, _routes);
     }
   }
 
@@ -283,7 +283,6 @@ class _OpenMapPageState extends State<OpenMapPage> {
 
                   // Vẽ routes
                   await MapHelper.drawRoutesOnMap(
-                    context,
                     mapController,
                     routes,
                   );
@@ -324,7 +323,6 @@ class _OpenMapPageState extends State<OpenMapPage> {
                 }
                 //  CASE 2: Có waypoint → MULTI DIRECTION
                 final directionResult = await MapHelper.fetchMultiDirection(
-                  context: context,
                   controller: mapController,
                   start: from,
                   end: to,
@@ -356,7 +354,7 @@ class _OpenMapPageState extends State<OpenMapPage> {
                 await MapHelper.clearMarkers(mapController);
 
                 // Vẽ routes
-                await MapHelper.drawRoutesOnMap(context, mapController, routes);
+                await MapHelper.drawRoutesOnMap( mapController, routes);
 
                 // Marker START + END
                 await MapHelper.addStartEndMarker(
@@ -526,6 +524,50 @@ class _OpenMapPageState extends State<OpenMapPage> {
       },
     );
   }
+  IconData _getManeuverIcon(String? maneuver) {
+    if (maneuver == null) return Icons.directions;
+
+    switch (maneuver) {
+    // --- Rẽ phải / trái ---
+      case "right":
+        return Icons.turn_right;
+      case "left":
+        return Icons.turn_left;
+
+    // --- Chếch trái/phải ---
+      case "slight right":
+        return Icons.turn_slight_right;
+      case "slight left":
+        return Icons.turn_slight_left;
+
+    // --- Gấp trái/phải ---
+      case "sharp right":
+        return Icons.turn_sharp_right;
+      case "sharp left":
+        return Icons.turn_sharp_left;
+
+    // --- Đi thẳng ---
+      case "straight":
+      case "continue":
+        return Icons.straight;
+
+    // --- Quay đầu (có thể API không trả về, nhưng phòng hờ) ---
+      case "uturn":
+      case "u-turn":
+      case "uturn-left":
+      case "uturn-right":
+        return Icons.u_turn_left;
+
+    // --- Vòng xuyến (nếu API có hỗ trợ) ---
+      case "roundabout-left":
+        return Icons.roundabout_left;
+      case "roundabout-right":
+        return Icons.roundabout_right;
+
+      default:
+        return Icons.directions; // icon mặc định
+    }
+  }
 
   void _showStepsDialog(BuildContext context, List<dynamic> steps) {
     showModalBottomSheet(
@@ -548,7 +590,7 @@ class _OpenMapPageState extends State<OpenMapPage> {
                 final duration = step["duration"]["text"];
 
                 return ListTile(
-                  leading: const Icon(Icons.turn_right),
+                  leading: Icon(_getManeuverIcon(step["maneuver"])),
                   title: Text(
                     instruction.replaceAll(
                       RegExp(r'<[^>]*>'),
@@ -1070,7 +1112,7 @@ class _OpenMapPageState extends State<OpenMapPage> {
                   routes[0]["legs"][0]["end_location"]["lng"],
                 );
 
-                await MapHelper.drawRoutesOnMap(context, mapController, routes);
+                await MapHelper.drawRoutesOnMap(mapController, routes);
                 await MapHelper.addStartEndMarker(
                   mapController,
                   startLocation,
@@ -1106,7 +1148,6 @@ class _OpenMapPageState extends State<OpenMapPage> {
                 Map<String, dynamic> directionResult;
                 // ========== 2️⃣ Multi-direction ==========
                 directionResult = await MapHelper.fetchMultiDirection(
-                  context: context,
                   controller: mapController,
                   start: from,
                   end: to,
@@ -1141,7 +1182,7 @@ class _OpenMapPageState extends State<OpenMapPage> {
                 await MapHelper.clearMarkers(mapController);
 
                 // Vẽ route
-                await MapHelper.drawRoutesOnMap(context, mapController, routes);
+                await MapHelper.drawRoutesOnMap( mapController, routes);
 
                 // START marker
                 await MapHelper.addStartEndMarker(

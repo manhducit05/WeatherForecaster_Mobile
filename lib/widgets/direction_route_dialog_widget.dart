@@ -397,6 +397,7 @@ class _DirectionRouteDialogState extends State<DirectionRouteDialog> {
                     final pos = await LocationHelper.determinePosition();
                     final lat = pos.latitude;
                     final lon = pos.longitude;
+                    if (!mounted) return; //
 
                     debugPrint("📍 My location: $lat, $lon");
 
@@ -496,7 +497,6 @@ class _DirectionRouteDialogState extends State<DirectionRouteDialog> {
                       );
 
                       final multiResult = await MapHelper.fetchMultiDirection(
-                        context: context,
                         controller: widget.mapController,
                         start: _fromLatLng!, // Start
                         end: finalDestination, // End (điểm cuối cùng nhập)

@@ -40,7 +40,6 @@ class MapHelper {
   }
 
   static Future<Map<String, dynamic>> fetchMultiDirection({
-    required BuildContext context,
     required MapLibreMapController controller,
     required LatLng start,
     required LatLng end,
@@ -108,7 +107,7 @@ class MapHelper {
       debugPrint("TOTAL DISTANCE = $totalDistance m");
       debugPrint("TOTAL DURATION = $totalDuration s");
 
-      await MapHelper.drawRoutesMultiOnMap(context, controller, mergedPoints);
+      await MapHelper.drawRoutesMultiOnMap(controller, mergedPoints);
 
       // Trả thêm tổng values ra UI
       return {
@@ -124,7 +123,6 @@ class MapHelper {
   }
   //  2. Vẽ nhiều tuyến đường + tự zoom camera (sửa an toàn)
   static Future<void> drawRoutesOnMap(
-    BuildContext context,
     MapLibreMapController controller,
     List<dynamic> routes, {
     double cameraPadding = 80.0,
@@ -342,7 +340,7 @@ class MapHelper {
       ),
     );
 
-    print('Đã vẽ đường nét đứt (MapLibre GL) với Source ID: $_sourceId và Layer ID: $_layerId');
+    debugPrint('Đã vẽ đường nét đứt (MapLibre GL) với Source ID: $_sourceId và Layer ID: $_layerId');
   }
 
   // Hàm tiện ích để dễ dàng xóa đường nét đứt
@@ -350,14 +348,13 @@ class MapHelper {
     try {
       await controller.removeLayer(_layerId);
       await controller.removeSource(_sourceId);
-      print('Đã xóa đường nét đứt (MapLibre GL).');
+      debugPrint('Đã xóa đường nét đứt (MapLibre GL).');
     } catch (e) {
-      print('Không tìm thấy đường nét đứt để xóa: $e');
+      debugPrint('Không tìm thấy đường nét đứt để xóa: $e');
     }
   }
 
   static Future<void> drawRoutesMultiOnMap(
-    BuildContext context,
     MapLibreMapController controller,
     List<dynamic> routes, {
     double cameraPadding = 80.0,
