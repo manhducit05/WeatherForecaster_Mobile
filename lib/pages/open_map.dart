@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 import 'package:geolocator/geolocator.dart';
@@ -59,24 +58,19 @@ class _OpenMapPageState extends State<OpenMapPage> {
       ),
     );
   }
-
   void _onMapCreated(MapLibreMapController controller) async {
     mapController = controller;
     debugPrint("Map created");
 
-    mapController.onSymbolTapped.add((symbol) {
-      final placeId = symbol.data?["placeId"];
-      _showMarkerMenu(symbol, placeId: placeId);
-    });
+    mapController.onSymbolTapped.clear();
 
-    mapController.onFeatureTapped.add((
-      Point<double> point,
-      LatLng coordinates,
-      String id,
-      String layerId,
-      Annotation? annotation,
-    ) {
-      _handleRouteLineTap(layerId, id);
+    mapController.onFeatureTapped.add((point, coordinates, id, layerId, annotation) {
+      if (annotation is Symbol) {
+        final placeId = annotation.data?["placeId"];
+        _showMarkerMenu(annotation, placeId: placeId);
+      } else {
+        _handleRouteLineTap(layerId, id);
+      }
     });
   }
 
@@ -131,7 +125,7 @@ class _OpenMapPageState extends State<OpenMapPage> {
   Future<void> _onStyleLoaded() async {
     if (!mounted) return;
     _styleLoaded = true;
-    debugPrint("🗺️ onStyleLoaded fired");
+    debugPrint("onStyleLoaded fired");
 
     // 1) Load image
     try {
@@ -154,7 +148,7 @@ class _OpenMapPageState extends State<OpenMapPage> {
         startBytes.buffer.asUint8List(),
       );
     } catch (e) {
-      debugPrint("❌ addImage start-marker failed: $e");
+      debugPrint("addImage start-marker failed: $e");
     }
 
     // Load END marker
@@ -164,11 +158,11 @@ class _OpenMapPageState extends State<OpenMapPage> {
       );
       await mapController.addImage("end-marker", endBytes.buffer.asUint8List());
     } catch (e) {
-      debugPrint("❌ addImage end-marker failed: $e");
+      debugPrint("addImage end-marker failed: $e");
     }
     // 2) Vẽ lại polyline nếu đã có route
     if (_routes.isNotEmpty) {
-      debugPrint("🔄 Style reloaded → redraw ${_routes.length} routes");
+      debugPrint("Style reloaded → redraw ${_routes.length} routes");
       await MapHelper.drawRoutesOnMap(context, mapController, _routes);
     }
   }
@@ -201,7 +195,6 @@ class _OpenMapPageState extends State<OpenMapPage> {
                 leading: const Icon(Icons.info_outline),
                 title: const Text("Show place info"),
                 onTap: () async {
-                  Navigator.pop(ctx);
                   final placeData = await _fetchPlaceDetail(placeId);
                   if (placeData != null && mounted) {
                     _showPlaceInfoDialog(placeData);
@@ -218,12 +211,12 @@ class _OpenMapPageState extends State<OpenMapPage> {
               title: const Text("Get Directions to here"),
               onTap: () async {
                 Navigator.pop(ctx);
-
                 final dest = LatLng(
                   symbol.options.geometry!.latitude,
                   symbol.options.geometry!.longitude,
                 );
-                final destName = symbol.options.textField ?? "Selected location";
+                final destName =
+                    symbol.options.textField ?? "Selected location";
 
                 // Hiện dialog lấy hướng đi
                 final result = await showDialog(
@@ -239,7 +232,8 @@ class _OpenMapPageState extends State<OpenMapPage> {
 
                 final from = result['from'] as LatLng;
                 final to = result['to'] as LatLng; // to = dest (fixed)
-                final waypoints = (result["waypoints"] as List?)?.cast<LatLng>() ?? [];
+                final waypoints =
+                    (result["waypoints"] as List?)?.cast<LatLng>() ?? [];
                 final vehicle = result['vehicle'] ?? 'car';
 
                 // Đảm bảo map style load xong
@@ -249,9 +243,8 @@ class _OpenMapPageState extends State<OpenMapPage> {
 
                 await MapHelper.clearMarkers(mapController);
 
-                // ============================================================
-                //  ✅ CASE 1: Không có waypoint → SINGLE DIRECTION
-                // ============================================================
+                //  CASE 1: Không có waypoint → SINGLE DIRECTION
+
                 if (waypoints.isEmpty) {
                   final directionResult = await MapHelper.fetchDirection(
                     startLat: from.latitude,
@@ -264,7 +257,9 @@ class _OpenMapPageState extends State<OpenMapPage> {
                   final routes = directionResult["data"]["routes"];
                   if (routes.isEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Không tìm thấy tuyến đường")),
+                      const SnackBar(
+                        content: Text("Không tìm thấy tuyến đường"),
+                      ),
                     );
                     return;
                   }
@@ -287,7 +282,11 @@ class _OpenMapPageState extends State<OpenMapPage> {
                   );
 
                   // Vẽ routes
-                  await MapHelper.drawRoutesOnMap(context, mapController, routes);
+                  await MapHelper.drawRoutesOnMap(
+                    context,
+                    mapController,
+                    routes,
+                  );
 
                   // START + END marker
                   await MapHelper.addStartEndMarker(
@@ -304,9 +303,9 @@ class _OpenMapPageState extends State<OpenMapPage> {
                   );
                   if (to.latitude != endLocation.latitude ||
                       to.longitude != endLocation.longitude) {
-
                     await MapHelper.drawDashedLine(
-                      controller: mapController, // Giả định mapController là MapLibreMapController
+                      controller:
+                          mapController, // Giả định mapController là MapLibreMapController
                       from: endLocation,
                       to: to,
                       color: "#A9A9A9", // Màu đỏ (đã chuyển sang hex)
@@ -323,10 +322,7 @@ class _OpenMapPageState extends State<OpenMapPage> {
 
                   return;
                 }
-
-                // ============================================================
-                //  ✅ CASE 2: Có waypoint → MULTI DIRECTION
-                // ============================================================
+                //  CASE 2: Có waypoint → MULTI DIRECTION
                 final directionResult = await MapHelper.fetchMultiDirection(
                   context: context,
                   controller: mapController,
@@ -381,7 +377,8 @@ class _OpenMapPageState extends State<OpenMapPage> {
                     await MapHelper.addStartEndMarker(
                       mapController,
                       w,
-                      iconAssetPath: "assets/images/position-waypoint-marker.png",
+                      iconAssetPath:
+                          "assets/images/position-waypoint-marker.png",
                       imageId: "waypoint_$index",
                     );
                     index++;
@@ -395,8 +392,10 @@ class _OpenMapPageState extends State<OpenMapPage> {
                   }
                 }
 
-                final int sumMeters = (directionResult["totalDistance"] ?? 0) as int;
-                final int sumSeconds = (directionResult["totalDuration"] ?? 0) as int;
+                final int sumMeters =
+                    (directionResult["totalDistance"] ?? 0) as int;
+                final int sumSeconds =
+                    (directionResult["totalDuration"] ?? 0) as int;
 
                 String formatDistance(int m) =>
                     m >= 1000 ? "${(m / 1000).toStringAsFixed(1)} km" : "$m m";
@@ -407,11 +406,12 @@ class _OpenMapPageState extends State<OpenMapPage> {
                   if (h > 0) return "$h giờ $m phút";
                   return "$m phút";
                 }
+
                 if (to.latitude != endLocation.latitude ||
                     to.longitude != endLocation.longitude) {
-
                   await MapHelper.drawDashedLine(
-                    controller: mapController, // Giả định mapController là MapLibreMapController
+                    controller:
+                        mapController, // Giả định mapController là MapLibreMapController
                     from: endLocation,
                     to: to,
                     color: "#A9A9A9", // Màu đỏ (đã chuyển sang hex)
@@ -433,8 +433,6 @@ class _OpenMapPageState extends State<OpenMapPage> {
               leading: const Icon(Icons.cloud),
               title: const Text("7-day weather forecast"),
               onTap: () async {
-                Navigator.pop(ctx); // đóng bottom sheet
-
                 final lat = symbol.options.geometry!.latitude;
                 final lon = symbol.options.geometry!.longitude;
 
@@ -1087,9 +1085,9 @@ class _OpenMapPageState extends State<OpenMapPage> {
                 );
                 if (to.latitude != endLocation.latitude ||
                     to.longitude != endLocation.longitude) {
-
                   await MapHelper.drawDashedLine(
-                    controller: mapController, // Giả định mapController là MapLibreMapController
+                    controller:
+                        mapController, // Giả định mapController là MapLibreMapController
                     from: endLocation,
                     to: to,
                     color: "#A9A9A9", // Màu đỏ (đã chuyển sang hex)
@@ -1162,9 +1160,9 @@ class _OpenMapPageState extends State<OpenMapPage> {
                 );
                 if (to.latitude != endLocation.latitude ||
                     to.longitude != endLocation.longitude) {
-
                   await MapHelper.drawDashedLine(
-                    controller: mapController, // Giả định mapController là MapLibreMapController
+                    controller:
+                        mapController, // Giả định mapController là MapLibreMapController
                     from: endLocation,
                     to: to,
                     color: "#A9A9A9", // Màu đỏ (đã chuyển sang hex)
@@ -1184,7 +1182,8 @@ class _OpenMapPageState extends State<OpenMapPage> {
                     await MapHelper.addStartEndMarker(
                       mapController,
                       w,
-                      iconAssetPath: "assets/images/position-waypoint-marker.png",
+                      iconAssetPath:
+                          "assets/images/position-waypoint-marker.png",
                       imageId: "waypoint_$index",
                     );
                     index++;
@@ -1290,10 +1289,10 @@ class _OpenMapPageState extends State<OpenMapPage> {
                             child: _isMultiRoute
                                 ? _buildMultiRouteInfo() // hiển thị tổng distance + duration
                                 : RoutesSelector(
-                              routes: _routes,
-                              selectedIndex: _selectedRouteIndex,
-                              onSelect: _selectRoute,
-                            ),
+                                    routes: _routes,
+                                    selectedIndex: _selectedRouteIndex,
+                                    onSelect: _selectRoute,
+                                  ),
                           ),
 
                         const SizedBox(height: 16),
