@@ -710,4 +710,35 @@ class MapHelper {
       } catch (_) {}
     }
   }
+
+
+  static Future<List<Map<String, dynamic>>> fetchNearby({
+    required double lat,
+    required double lon,
+    required String category,
+  }) async {
+    final apiKey = dotenv.env['API_KEY_ROUTES'];
+    final url =
+        "https://mapapis.openmap.vn/v1/nearby?size=10&categories=$category&point.lon=$lon&point.lat=$lat&boundary.circle.radius=5&apikey=$apiKey";
+    final res = await http.get(Uri.parse(url));
+
+    if (res.statusCode != 200) return [];
+
+    final jsonData = json.decode(res.body);
+    final features = jsonData["features"] as List<dynamic>?;
+
+    if (features == null) return [];
+
+    return features
+        .map((f) => {
+      "name": f["properties"]["name"] ?? "",
+      "address": f["properties"]["label"] ?? "",
+      "lat": f["geometry"]["coordinates"][1],
+      "lon": f["geometry"]["coordinates"][0],
+      "distance": f["properties"]["distance"] ?? 0,
+      "id": f["properties"]["id"] ?? 0,
+
+    })
+        .toList();
+  }
 }

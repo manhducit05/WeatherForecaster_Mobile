@@ -5,7 +5,6 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
-
 import 'dart:convert';
 import '../utils/storage_helper.dart';
 import '../utils/location_helper.dart';
@@ -58,13 +57,20 @@ class _OpenMapPageState extends State<OpenMapPage> {
       ),
     );
   }
+
   void _onMapCreated(MapLibreMapController controller) async {
     mapController = controller;
     debugPrint("Map created");
 
     mapController.onSymbolTapped.clear();
 
-    mapController.onFeatureTapped.add((point, coordinates, id, layerId, annotation) {
+    mapController.onFeatureTapped.add((
+      point,
+      coordinates,
+      id,
+      layerId,
+      annotation,
+    ) {
       if (annotation is Symbol) {
         final placeId = annotation.data?["placeId"];
         _showMarkerMenu(annotation, placeId: placeId);
@@ -128,13 +134,14 @@ class _OpenMapPageState extends State<OpenMapPage> {
     debugPrint("onStyleLoaded fired");
 
     // 1) Load image
+
     try {
       final ByteData bytes = await rootBundle.load(
-        "assets/images/markup_icon.png",
+        "assets/images/location-pin.png",
       );
 
       final Uint8List list = bytes.buffer.asUint8List();
-      await mapController.addImage("custom-marker", list);
+      await mapController.addImage("location-pin", list);
     } catch (e) {
       debugPrint("addImage failed: $e");
     }
@@ -163,7 +170,7 @@ class _OpenMapPageState extends State<OpenMapPage> {
     // 2) Vẽ lại polyline nếu đã có route
     if (_routes.isNotEmpty) {
       debugPrint("Style reloaded → redraw ${_routes.length} routes");
-      await MapHelper.drawRoutesOnMap (mapController, _routes);
+      await MapHelper.drawRoutesOnMap(mapController, _routes);
     }
   }
 
@@ -177,7 +184,7 @@ class _OpenMapPageState extends State<OpenMapPage> {
     _currentSymbol = await mapController.addSymbol(
       SymbolOptions(
         geometry: LatLng(lat, lon),
-        iconImage: "custom-marker",
+        iconImage: "location-pin",
         iconSize: 0.005,
       ),
     );
@@ -282,10 +289,7 @@ class _OpenMapPageState extends State<OpenMapPage> {
                   );
 
                   // Vẽ routes
-                  await MapHelper.drawRoutesOnMap(
-                    mapController,
-                    routes,
-                  );
+                  await MapHelper.drawRoutesOnMap(mapController, routes);
 
                   // START + END marker
                   await MapHelper.addStartEndMarker(
@@ -354,7 +358,7 @@ class _OpenMapPageState extends State<OpenMapPage> {
                 await MapHelper.clearMarkers(mapController);
 
                 // Vẽ routes
-                await MapHelper.drawRoutesOnMap( mapController, routes);
+                await MapHelper.drawRoutesOnMap(mapController, routes);
 
                 // Marker START + END
                 await MapHelper.addStartEndMarker(
@@ -524,41 +528,42 @@ class _OpenMapPageState extends State<OpenMapPage> {
       },
     );
   }
+
   IconData _getManeuverIcon(String? maneuver) {
     if (maneuver == null) return Icons.directions;
 
     switch (maneuver) {
-    // --- Rẽ phải / trái ---
+      // --- Rẽ phải / trái ---
       case "right":
         return Icons.turn_right;
       case "left":
         return Icons.turn_left;
 
-    // --- Chếch trái/phải ---
+      // --- Chếch trái/phải ---
       case "slight right":
         return Icons.turn_slight_right;
       case "slight left":
         return Icons.turn_slight_left;
 
-    // --- Gấp trái/phải ---
+      // --- Gấp trái/phải ---
       case "sharp right":
         return Icons.turn_sharp_right;
       case "sharp left":
         return Icons.turn_sharp_left;
 
-    // --- Đi thẳng ---
+      // --- Đi thẳng ---
       case "straight":
       case "continue":
         return Icons.straight;
 
-    // --- Quay đầu (có thể API không trả về, nhưng phòng hờ) ---
+      // --- Quay đầu (có thể API không trả về, nhưng phòng hờ) ---
       case "uturn":
       case "u-turn":
       case "uturn-left":
       case "uturn-right":
         return Icons.u_turn_left;
 
-    // --- Vòng xuyến (nếu API có hỗ trợ) ---
+      // --- Vòng xuyến (nếu API có hỗ trợ) ---
       case "roundabout-left":
         return Icons.roundabout_left;
       case "roundabout-right":
@@ -728,8 +733,9 @@ class _OpenMapPageState extends State<OpenMapPage> {
           _currentSymbol = await mapController.addSymbol(
             SymbolOptions(
               geometry: target,
-              iconImage: "custom-marker",
+              iconImage: "location-pin",
               textField: name,
+              iconSize: 0.2,
               textOffset: const Offset(0, 1.5),
             ),
           );
@@ -1039,6 +1045,63 @@ class _OpenMapPageState extends State<OpenMapPage> {
     return null;
   }
 
+  List<Map<String, dynamic>> _nearbyResults = [];
+  bool _showNearbySheet = false;
+  List<Symbol> _nearbySymbols = [];
+  Widget _buildCategoryChip(String label, IconData icon, String category) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: ActionChip(
+        avatar: Icon(icon, size: 20),
+        label: Text(label),
+        onPressed: () async {
+          try {
+            // 1️⃣ Lấy vị trí hiện tại
+            Position pos = await LocationHelper.determinePosition();
+            final lat = pos.latitude;
+            final lon = pos.longitude;
+
+            // 2️⃣ Lấy dữ liệu nearby
+            final results = await MapHelper.fetchNearby(
+              lat: lat,
+              lon: lon,
+              category: category,
+            );
+
+            // 3️⃣ Hiển thị sheet
+            setState(() {
+              _nearbyResults = results;
+              _showNearbySheet = true;
+            });
+
+            // 4️⃣ Vẽ các symbol trên Map
+            // Xóa group symbol cũ (nếu có)
+            if (_nearbySymbols.isNotEmpty) {
+              await mapController.removeSymbols(_nearbySymbols);
+              _nearbySymbols.clear();
+            }
+            // Thêm symbol mới
+            for (var item in results) {
+              final symbol = await mapController.addSymbol(
+                SymbolOptions(
+                  geometry: LatLng(item["lat"], item["lon"]),
+                  iconImage: "location-pin",
+                  iconSize: 0.2,
+                ),
+              );
+              _nearbySymbols.add(symbol);
+            }
+          } catch (e) {
+            if (!mounted) return;
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text("Không thể lấy vị trí: $e")));
+          }
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -1182,7 +1245,7 @@ class _OpenMapPageState extends State<OpenMapPage> {
                 await MapHelper.clearMarkers(mapController);
 
                 // Vẽ route
-                await MapHelper.drawRoutesOnMap( mapController, routes);
+                await MapHelper.drawRoutesOnMap(mapController, routes);
 
                 // START marker
                 await MapHelper.addStartEndMarker(
@@ -1322,7 +1385,21 @@ class _OpenMapPageState extends State<OpenMapPage> {
                             borderRadius: BorderRadius.circular(2),
                           ),
                         ),
-
+                        Positioned(
+                          right: 0,
+                          top: 0,
+                          child: Builder(
+                            builder: (innerContext) => IconButton(
+                              icon: const Icon(Icons.close),
+                              onPressed: () {
+                                // Navigator.of(innerContext).pop(); // chỉ đóng bottom sheet
+                                MapHelper.clearRouteLayers(
+                                  mapController,
+                                ); // xóa tuyến đường trên map
+                              },
+                            ),
+                          ),
+                        ),
                         // THÊM ROUTE SELECTOR VÀO ĐÂY
                         if (_routes.isNotEmpty)
                           Padding(
@@ -1337,7 +1414,6 @@ class _OpenMapPageState extends State<OpenMapPage> {
                           ),
 
                         const SizedBox(height: 16),
-
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           children: [
@@ -1367,7 +1443,7 @@ class _OpenMapPageState extends State<OpenMapPage> {
             ),
           // --- Search box + suggestions ---
           Positioned(
-            top: 16,
+            top: 5,
             left: 16,
             right: 16,
             child: Column(
@@ -1461,6 +1537,121 @@ class _OpenMapPageState extends State<OpenMapPage> {
               ],
             ),
           ),
+          Positioned(
+            top: 60, // Đặt dưới search box (tùy chỉnh theo UI)
+            left: 0,
+            right: 0,
+            child: SizedBox(
+              height: 50,
+              child: ListView(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                scrollDirection: Axis.horizontal,
+                children: [
+                  _buildCategoryChip(
+                    "Restaurant",
+                    Icons.restaurant,
+                    "restaurant",
+                  ),
+                  _buildCategoryChip("Hotel", Icons.hotel, "hotel"),
+                  _buildCategoryChip(
+                    "Fuel",
+                    Icons.local_gas_station,
+                    "gas_station",
+                  ),
+                  _buildCategoryChip("Health", Icons.local_hospital, "health"),
+                  _buildCategoryChip("Education", Icons.school, "education"),
+                  _buildCategoryChip(
+                    "Pharmacy",
+                    Icons.local_pharmacy,
+                    "pharmacy",
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (_showNearbySheet)
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: DraggableScrollableSheet(
+                minChildSize: 0.25,
+                maxChildSize: 0.6,
+                initialChildSize: 0.25,
+                builder: (context, scrollController) {
+                  return Container(
+                    decoration: const BoxDecoration(
+                      color: Colors.white, //NỀN TRẮNG RÕ RÀNG
+                      borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(18),
+                      ),
+                    ),
+                    child: ListView.separated(
+                      controller: scrollController,
+                      padding: const EdgeInsets.only(top: 12),
+                      itemCount: _nearbyResults.length,
+                      itemBuilder: (_, index) {
+                        final item = _nearbyResults[index];
+
+                        return Builder(
+                          builder: (sheetContext) {
+                            return ListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
+                              leading: Container(
+                                width: 42,
+                                height: 42,
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.withAlpha(
+                                    (0.1 * 255).toInt(),
+                                  ),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Icon(
+                                  Icons.place,
+                                  color: Colors.blue,
+                                ),
+                              ),
+                              title: Text(
+                                item["name"],
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              subtitle: Text(
+                                item["address"],
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(color: Colors.black54),
+                              ),
+                              onTap: () {
+                                final id = item["id"];
+                                // Đóng sheet trước
+                                setState(() {
+                                  _showNearbySheet = false; // Ẩn sheet
+                                });
+                                // Gọi hàm tìm kiếm sau khi sheet đóng
+                                Future.delayed(
+                                  const Duration(milliseconds: 80),
+                                  () {
+                                    _searchLocation(id);
+                                  },
+                                );
+                              },
+                            );
+                          },
+                        );
+                      },
+                      separatorBuilder: (_, __) => const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 16),
+                        child: Divider(height: 1, color: Colors.black12),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
         ],
       ),
     );
