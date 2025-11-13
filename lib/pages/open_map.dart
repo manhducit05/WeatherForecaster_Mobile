@@ -26,6 +26,7 @@ class _OpenMapPageState extends State<OpenMapPage> {
   final String mapStyle = "https://tiles.openmap.vn/styles/day-v1/style.json";
   bool _hasSaved = false;
   bool _styleLoaded = false;
+  LatLng? _searchedPosition; // null = mặc định dùng vị trí của tôi
 
   int _selectedRouteIndex = 0;
   List<Map<String, dynamic>> _routes = [];
@@ -142,6 +143,17 @@ class _OpenMapPageState extends State<OpenMapPage> {
 
       final Uint8List list = bytes.buffer.asUint8List();
       await mapController.addImage("location-pin", list);
+    } catch (e) {
+      debugPrint("addImage failed: $e");
+    }
+
+    try {
+      final ByteData bytes = await rootBundle.load(
+        "assets/images/searched-location.png",
+      );
+
+      final Uint8List list = bytes.buffer.asUint8List();
+      await mapController.addImage("searched-location", list);
     } catch (e) {
       debugPrint("addImage failed: $e");
     }
@@ -690,7 +702,8 @@ class _OpenMapPageState extends State<OpenMapPage> {
       mapController.animateCamera(
         CameraUpdate.newLatLngZoom(LatLng(pos.latitude, pos.longitude), 15.0),
       );
-
+      // dieu chinh vi tri tim kiem dia diem xung quanh
+      _searchedPosition = null;
       await _addMarker(pos.latitude, pos.longitude);
       //thông báo nếu có lỗi
     } catch (e) {
@@ -721,6 +734,8 @@ class _OpenMapPageState extends State<OpenMapPage> {
           final lat = coords[1];
           final target = LatLng(lat, lon);
 
+          // chinh vi tri tim kiem dia diem xung quanh
+          _searchedPosition = target;
           // Move camera
           await mapController.animateCamera(
             CameraUpdate.newLatLngZoom(target, 15),
@@ -733,7 +748,7 @@ class _OpenMapPageState extends State<OpenMapPage> {
           _currentSymbol = await mapController.addSymbol(
             SymbolOptions(
               geometry: target,
-              iconImage: "location-pin",
+              iconImage: "searched-location",
               textField: name,
               iconSize: 0.2,
               textOffset: const Offset(0, 1.5),
@@ -1056,10 +1071,19 @@ class _OpenMapPageState extends State<OpenMapPage> {
         label: Text(label),
         onPressed: () async {
           try {
-            // 1️⃣ Lấy vị trí hiện tại
-            Position pos = await LocationHelper.determinePosition();
-            final lat = pos.latitude;
-            final lon = pos.longitude;
+            // 1️⃣ Lấy vị trí
+            double lat;
+            double lon;
+
+            // 1️⃣ Xác định vị trí đang sử dụng
+            if (_searchedPosition != null) {
+              lat = _searchedPosition!.latitude;
+              lon = _searchedPosition!.longitude;
+            } else {
+              final pos = await LocationHelper.determinePosition();
+              lat = pos.latitude;
+              lon = pos.longitude;
+            }
 
             // 2️⃣ Lấy dữ liệu nearby
             final results = await MapHelper.fetchNearby(
@@ -1352,95 +1376,150 @@ class _OpenMapPageState extends State<OpenMapPage> {
           // Overlay box
           if (_routeDistance != null && _routeDuration != null)
             DraggableScrollableSheet(
-              initialChildSize: 0.12, // khi thu nhỏ
+              initialChildSize: 0.12,
               minChildSize: 0.12,
-              maxChildSize: 0.22, // kéo lên hiển thị chi tiết
+              maxChildSize: 0.22,
               builder: (context, scrollController) {
-                return Container(
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(20),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black26,
-                        blurRadius: 10,
-                        offset: Offset(0, -2),
+                return Stack(
+                  children: [
+                    // --- NỘI DUNG CHÍNH ---
+                    Container(
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.vertical(
+                          top: Radius.circular(20),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black26,
+                            blurRadius: 10,
+                            offset: Offset(0, -2),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  child: SingleChildScrollView(
-                    controller: scrollController,
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          height: 4,
-                          width: 40,
-                          margin: const EdgeInsets.only(bottom: 12),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[400],
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        ),
-                        Positioned(
-                          right: 0,
-                          top: 0,
-                          child: Builder(
-                            builder: (innerContext) => IconButton(
-                              icon: const Icon(Icons.close),
-                              onPressed: () {
-                                // Navigator.of(innerContext).pop(); // chỉ đóng bottom sheet
-                                MapHelper.clearRouteLayers(
-                                  mapController,
-                                ); // xóa tuyến đường trên map
-                              },
-                            ),
-                          ),
-                        ),
-                        // THÊM ROUTE SELECTOR VÀO ĐÂY
-                        if (_routes.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: _isMultiRoute
-                                ? _buildMultiRouteInfo() // hiển thị tổng distance + duration
-                                : RoutesSelector(
-                                    routes: _routes,
-                                    selectedIndex: _selectedRouteIndex,
-                                    onSelect: _selectRoute,
-                                  ),
-                          ),
-
-                        const SizedBox(height: 16),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      child: SingleChildScrollView(
+                        controller: scrollController,
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            ElevatedButton.icon(
-                              onPressed: () {
-                                _showStepsDialog(context, _routeSteps!);
-                              },
-                              icon: const Icon(Icons.directions),
-                              label: const Text("Xem chi tiết"),
+                            // --- Thanh kéo ---
+                            Container(
+                              height: 4,
+                              width: 40,
+                              margin: const EdgeInsets.only(bottom: 12),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[400],
+                                borderRadius: BorderRadius.circular(2),
+                              ),
                             ),
-                            ElevatedButton.icon(
-                              onPressed: () {
-                                final text =
-                                    "Tuyến đường dài $_routeDistance, thời gian di chuyển $_routeDuration.";
-                                Share.share(text);
-                              },
-                              icon: const Icon(Icons.share),
-                              label: const Text("Chia sẻ"),
+
+                            // --- Thông tin route ---
+                            if (_routes.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: _isMultiRoute
+                                    ? _buildMultiRouteInfo()
+                                    : RoutesSelector(
+                                  routes: _routes,
+                                  selectedIndex: _selectedRouteIndex,
+                                  onSelect: _selectRoute,
+                                ),
+                              ),
+
+                            const SizedBox(height: 16),
+
+                            // --- Nút thao tác ---
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                ElevatedButton.icon(
+                                  onPressed: () {
+                                    _showStepsDialog(context, _routeSteps!);
+                                  },
+                                  icon: const Icon(Icons.directions),
+                                  label: const Text("Xem chi tiết"),
+                                ),
+                                ElevatedButton.icon(
+                                  onPressed: () {
+                                    final text =
+                                        "Tuyến đường dài $_routeDistance, thời gian di chuyển $_routeDuration.";
+                                    Share.share(text);
+                                  },
+                                  icon: const Icon(Icons.share),
+                                  label: const Text("Chia sẻ"),
+                                ),
+                              ],
                             ),
                           ],
                         ),
-                      ],
+                      ),
                     ),
-                  ),
+
+                    // --- Nút X ĐÓNG SHEET ---
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(20),
+                          onTap: () {
+                            // ✅ chỉ ẩn sheet, không đóng trang
+                            setState(() {
+                              _routeDistance = null;
+                              _routeDuration = null;
+                            });
+                            // ✅ xóa tuyến đường trên bản đồ
+                            MapHelper.clearRouteLayers(mapController);
+                          },
+                          child: const Padding(
+                            padding: EdgeInsets.all(8),
+                            child: Icon(
+                              Icons.close_rounded,
+                              color: Colors.black54,
+                              size: 24,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 );
               },
             ),
+          Positioned(
+            top: 60, // Đặt dưới search box (tùy chỉnh theo UI)
+            left: 0,
+            right: 0,
+            child: SizedBox(
+              height: 50,
+              child: ListView(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                scrollDirection: Axis.horizontal,
+                children: [
+                  _buildCategoryChip(
+                    "Restaurant",
+                    Icons.restaurant,
+                    "restaurant",
+                  ),
+                  _buildCategoryChip("Hotel", Icons.hotel, "hotel"),
+                  _buildCategoryChip(
+                    "Fuel",
+                    Icons.local_gas_station,
+                    "gas_station",
+                  ),
+                  _buildCategoryChip("Health", Icons.local_hospital, "health"),
+                  _buildCategoryChip("Education", Icons.school, "education"),
+                  _buildCategoryChip(
+                    "Pharmacy",
+                    Icons.local_pharmacy,
+                    "pharmacy",
+                  ),
+                ],
+              ),
+            ),
+          ),
           // --- Search box + suggestions ---
           Positioned(
             top: 5,
@@ -1537,38 +1616,6 @@ class _OpenMapPageState extends State<OpenMapPage> {
               ],
             ),
           ),
-          Positioned(
-            top: 60, // Đặt dưới search box (tùy chỉnh theo UI)
-            left: 0,
-            right: 0,
-            child: SizedBox(
-              height: 50,
-              child: ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                scrollDirection: Axis.horizontal,
-                children: [
-                  _buildCategoryChip(
-                    "Restaurant",
-                    Icons.restaurant,
-                    "restaurant",
-                  ),
-                  _buildCategoryChip("Hotel", Icons.hotel, "hotel"),
-                  _buildCategoryChip(
-                    "Fuel",
-                    Icons.local_gas_station,
-                    "gas_station",
-                  ),
-                  _buildCategoryChip("Health", Icons.local_hospital, "health"),
-                  _buildCategoryChip("Education", Icons.school, "education"),
-                  _buildCategoryChip(
-                    "Pharmacy",
-                    Icons.local_pharmacy,
-                    "pharmacy",
-                  ),
-                ],
-              ),
-            ),
-          ),
           if (_showNearbySheet)
             Align(
               alignment: Alignment.bottomCenter,
@@ -1577,22 +1624,25 @@ class _OpenMapPageState extends State<OpenMapPage> {
                 maxChildSize: 0.6,
                 initialChildSize: 0.25,
                 builder: (context, scrollController) {
-                  return Container(
-                    decoration: const BoxDecoration(
-                      color: Colors.white, //NỀN TRẮNG RÕ RÀNG
-                      borderRadius: BorderRadius.vertical(
-                        top: Radius.circular(18),
-                      ),
-                    ),
-                    child: ListView.separated(
-                      controller: scrollController,
-                      padding: const EdgeInsets.only(top: 12),
-                      itemCount: _nearbyResults.length,
-                      itemBuilder: (_, index) {
-                        final item = _nearbyResults[index];
+                  return Stack(
+                    children: [
+                      // Nội dung danh sách
+                      Container(
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.vertical(
+                            top: Radius.circular(18),
+                          ),
+                        ),
+                        child: ListView.separated(
+                          controller: scrollController,
+                          padding: const EdgeInsets.only(
+                            top: 30,
+                          ), // chừa chỗ cho nút X
+                          itemCount: _nearbyResults.length,
+                          itemBuilder: (_, index) {
+                            final item = _nearbyResults[index];
 
-                        return Builder(
-                          builder: (sheetContext) {
                             return ListTile(
                               contentPadding: const EdgeInsets.symmetric(
                                 horizontal: 16,
@@ -1627,9 +1677,9 @@ class _OpenMapPageState extends State<OpenMapPage> {
                               ),
                               onTap: () {
                                 final id = item["id"];
-                                // Đóng sheet trước
+                                // Đóng sheet
                                 setState(() {
-                                  _showNearbySheet = false; // Ẩn sheet
+                                  _showNearbySheet = false;
                                 });
                                 // Gọi hàm tìm kiếm sau khi sheet đóng
                                 Future.delayed(
@@ -1641,13 +1691,38 @@ class _OpenMapPageState extends State<OpenMapPage> {
                               },
                             );
                           },
-                        );
-                      },
-                      separatorBuilder: (_, __) => const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 16),
-                        child: Divider(height: 1, color: Colors.black12),
+                          separatorBuilder: (_, __) => const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 16),
+                            child: Divider(height: 1, color: Colors.black12),
+                          ),
+                        ),
                       ),
-                    ),
+
+                      // Nút X đóng sheet
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(20),
+                            onTap: () {
+                              setState(() {
+                                _showNearbySheet = false;
+                              });
+                            },
+                            child: const Padding(
+                              padding: EdgeInsets.all(8),
+                              child: Icon(
+                                Icons.close_rounded,
+                                color: Colors.black54,
+                                size: 24,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   );
                 },
               ),
