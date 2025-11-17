@@ -128,57 +128,77 @@ class _OpenMapPageState extends State<OpenMapPage> {
       }
     }
   }
+  // bộ icon
+  final List<Map<String, String>> mapIcons = [
+    {
+      "key": "location-pin",
+      "path": "assets/images/location-pin.png",
+    },
+    {
+      "key": "searched-location",
+      "path": "assets/images/searched-location.png",
+    },
+    {
+      "key": "start-marker",
+      "path": "assets/images/icon/start-marker.png",
+    },
+    {
+      "key": "end-marker",
+      "path": "assets/images/icon/end-marker.png",
+    },
+    // bộ icon
+    {
+      "key": "gas_station-icon",
+      "path": "assets/images/icon/gas_station-icon.png",
+    },
+    {
+      "key": "health-icon",
+      "path": "assets/images/icon/health-icon.png",
+    },
+    {
+      "key": "hotel-icon",
+      "path": "assets/images/icon/hotel-icon.png",
+    },
+    {
+      "key": "pharmacy-icon",
+      "path": "assets/images/icon/pharmacy-icon.png",
+    },
 
+    {
+      "key": "restaurant-icon",
+      "path": "assets/images/icon/restaurant-icon.png",
+    },
+    {
+      "key": "school-icon",
+      "path": "assets/images/icon/education-icon.png",
+    },
+  ];
+
+
+  Future<void> _loadIconsFromList() async {
+    for (var icon in mapIcons) {
+      final key = icon["key"]!;
+      final path = icon["path"]!;
+
+      try {
+        final ByteData bytes = await rootBundle.load(path);
+        final Uint8List list = bytes.buffer.asUint8List();
+        await mapController.addImage(key, list);
+
+        debugPrint("Loaded icon: $key");
+      } catch (e) {
+        debugPrint("Failed to load $key: $e");
+      }
+    }
+  }
   Future<void> _onStyleLoaded() async {
     if (!mounted) return;
     _styleLoaded = true;
     debugPrint("onStyleLoaded fired");
 
-    // 1) Load image
+    // 1) Load icon
+    await _loadIconsFromList();
 
-    try {
-      final ByteData bytes = await rootBundle.load(
-        "assets/images/location-pin.png",
-      );
-
-      final Uint8List list = bytes.buffer.asUint8List();
-      await mapController.addImage("location-pin", list);
-    } catch (e) {
-      debugPrint("addImage failed: $e");
-    }
-
-    try {
-      final ByteData bytes = await rootBundle.load(
-        "assets/images/searched-location.png",
-      );
-
-      final Uint8List list = bytes.buffer.asUint8List();
-      await mapController.addImage("searched-location", list);
-    } catch (e) {
-      debugPrint("addImage failed: $e");
-    }
-    //  Load START marker
-    try {
-      final ByteData startBytes = await rootBundle.load(
-        "assets/icons/start-position-marker.svg",
-      );
-      await mapController.addImage(
-        "start-marker",
-        startBytes.buffer.asUint8List(),
-      );
-    } catch (e) {
-      debugPrint("addImage start-marker failed: $e");
-    }
-
-    // Load END marker
-    try {
-      final ByteData endBytes = await rootBundle.load(
-        "assets/icons/end-position-marker.svg",
-      );
-      await mapController.addImage("end-marker", endBytes.buffer.asUint8List());
-    } catch (e) {
-      debugPrint("addImage end-marker failed: $e");
-    }
     // 2) Vẽ lại polyline nếu đã có route
     if (_routes.isNotEmpty) {
       debugPrint("Style reloaded → redraw ${_routes.length} routes");
@@ -1109,8 +1129,8 @@ class _OpenMapPageState extends State<OpenMapPage> {
               final symbol = await mapController.addSymbol(
                 SymbolOptions(
                   geometry: LatLng(item["lat"], item["lon"]),
-                  iconImage: "location-pin",
-                  iconSize: 0.2,
+                  iconImage: "$category-icon",
+                  iconSize: 3.5,
                 ),
               );
               _nearbySymbols.add(symbol);
@@ -1465,12 +1485,12 @@ class _OpenMapPageState extends State<OpenMapPage> {
                         child: InkWell(
                           borderRadius: BorderRadius.circular(20),
                           onTap: () {
-                            // ✅ chỉ ẩn sheet, không đóng trang
+                            // chỉ ẩn sheet, không đóng trang
                             setState(() {
                               _routeDistance = null;
                               _routeDuration = null;
                             });
-                            // ✅ xóa tuyến đường trên bản đồ
+                            // xóa tuyến đường trên bản đồ
                             MapHelper.clearRouteLayers(mapController);
                           },
                           child: const Padding(

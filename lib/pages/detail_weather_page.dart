@@ -9,8 +9,6 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import 'package:weather_animation/weather_animation.dart';
-
-
 import '../utils/storage_helper.dart';
 
 class DetailWeatherPage extends StatefulWidget {

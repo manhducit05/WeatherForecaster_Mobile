@@ -100,6 +100,7 @@ flutter:
   # see https://flutter.dev/to/font-from-package
   assets:
     - assets/images/
+    - assets/images/icon/
     - assets/data/locations.json
     - .env
 
