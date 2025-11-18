@@ -43,11 +43,15 @@ dependencies:
   flutter_dotenv: ^5.1.0
   cupertino_icons: ^1.0.8
   share_plus: ^10.0.0
+  flutter_launcher_icons: ^0.13.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/icons/app_icon.png"
 
 
   # The "flutter_lints" package below contains a set of recommended lints to
@@ -103,4 +107,5 @@ flutter:
     - assets/images/icon/
     - assets/data/locations.json
     - .env
+
 
