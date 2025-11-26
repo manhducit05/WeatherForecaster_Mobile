@@ -39,8 +39,12 @@ WeatherApp Version 1.0.0
 
 Future updates will include advanced features and enhanced user experience.
 """;
+  static const String signOut = "Please log in again to continue using the app’s features";
+
 
   static const String titleUserAgreement = "User Agreement";
   static const String titlePrivacyPolicy = "Privacy Policy";
   static const String titleAppVersion = "App Version";
+  static const String titleSignOut = "Sign out successfully!";
+
 }

@@ -10,6 +10,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import 'package:weather_animation/weather_animation.dart';
 import '../utils/storage_helper.dart';
+import 'package:supertokens_flutter/supertokens.dart';
 
 class DetailWeatherPage extends StatefulWidget {
   final Map<String, dynamic> weatherData;
@@ -52,7 +53,9 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
         )
         .toList();
   }
-
+  Future<void> signOut() async {
+    await SuperTokens.signOut();
+  }
   Future<void> _loadAndBuildLocations() async {
     final sampleLocations = await loadLocationsData();
 
@@ -838,6 +841,12 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
                                 title = AppTexts.titleAppVersion;
                                 content = AppTexts.appVersionInfo;
                                 break;
+                              case 4:
+                                signOut();
+                                title = AppTexts.titleSignOut;
+                                content = AppTexts.signOut;
+                                Navigator.pushReplacementNamed(context, '/login');
+                                break;
                             }
 
                             showDialog(
@@ -875,6 +884,13 @@ class _DetailWeatherPage extends State<DetailWeatherPage> {
                               value: 3,
                               child: Text(
                                 "App Version",
+                                style: TextStyle(color: Colors.white),
+                              ),
+                            ),
+                            const PopupMenuItem(
+                              value: 4,
+                              child: Text(
+                                "Log out",
                                 style: TextStyle(color: Colors.white),
                               ),
                             ),
